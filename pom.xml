@@ -63,6 +63,16 @@
         	<artifactId>bitcoinj-core</artifactId>
         	<version>0.14.5</version>
         </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.25</version>
+        </dependency>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-jdk14</artifactId>
+            <version>1.7.25</version>
+        </dependency>
     </dependencies>
     <properties>
         <jersey.version>2.26</jersey.version>
