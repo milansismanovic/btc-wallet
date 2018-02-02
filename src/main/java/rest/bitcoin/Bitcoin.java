@@ -73,7 +73,7 @@ public class Bitcoin {
 		// go backwards, starting with the last mined block
 		// FIXME return the actual transaction
 		List<Transaction> txs = new LinkedList<Transaction>();
-		// iterate backwards
+		// iterate backwards 
 		int blocks = client.getBlockChainInfo().getBlocks();
 		int i = 25000; // max amount of blocks into the past to go through, about half a year
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
