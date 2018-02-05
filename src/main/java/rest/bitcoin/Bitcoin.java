@@ -23,7 +23,10 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
+import org.consensusj.jsonrpc.JsonRPCException;
 import org.consensusj.jsonrpc.JsonRPCStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo;
 import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo;
@@ -33,6 +36,7 @@ import com.msgilligan.bitcoinj.rpc.RPCURI;
 
 @Path("bitcoin")
 public class Bitcoin {
+	private static final Logger log = LoggerFactory.getLogger(Bitcoin.class);
 	// TODO
 	// fixed keys/address for mocking
 	// real keys/address' come from the DB in a later stage
@@ -82,7 +86,7 @@ public class Bitcoin {
 		List<RawTransactionInfo> txs = new LinkedList<RawTransactionInfo>();
 		int lastBlockNumber = client.getBlockCount();
 		// look half a year in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = lastBlockNumber - 6 * 10 * 24 * 183;
+		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 10 * 24 * 183);
 		// TODO get actual user registration date
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
 		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
@@ -92,7 +96,13 @@ public class Bitcoin {
 				List<Transaction> transactions = block.getTransactions();
 				if (transactions != null) {
 					for (Transaction transaction : transactions) {
-						WalletTransactionInfo transactionInfo = client.getTransaction(transaction.getHash());
+						WalletTransactionInfo transactionInfo;
+						try {
+							transactionInfo = client.getTransaction(transaction.getHash());
+						} catch (JsonRPCException e) {
+							log.info("Non-wallet transaction: " + transaction.getHashAsString());
+							continue;
+						}
 						List<Detail> details = transactionInfo.getDetails();
 						for (Detail detail : details) {
 							String addressStr = detail.getAddress() == null ? null : detail.getAddress().toBase58();
