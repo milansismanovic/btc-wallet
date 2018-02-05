@@ -19,9 +19,6 @@ import org.bitcoinj.core.TransactionOutPoint;
 import org.bitcoinj.core.TransactionOutput;
 import org.bitcoinj.params.TestNet3Params;
 import org.consensusj.jsonrpc.JsonRPCStatusException;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -41,7 +38,6 @@ public class BitcoinExtendedClientTest {
 			NetworkParameters netParams = TestNet3Params.get();
 
 			URI server = RPCURI.getDefaultTestNetURI();
-			// URI server = new URI("http://" + host + ":18332/");
 
 			client = new BitcoinExtendedClient(netParams, server, rpcuser, rpcpassword);
 
@@ -57,26 +53,10 @@ public class BitcoinExtendedClientTest {
 		}
 	}
 
-	@AfterClass
-	public static void tearDownAfterClass() throws Exception {
-	}
-
-	@Before
-	public void setUp() throws Exception {
-	}
-
-	@After
-	public void tearDown() throws Exception {
-	}
-
-	@Test
-	public void test() {
-	}
-
 	@Test
 	public void testGetBitcoinBalanceAddress() throws Exception {
 		if (client == null) {
-			setUp();
+			setUpBeforeClass();
 		}
 		Address address = Address.fromBase58(TestNet3Params.get(), faucetAddress);
 		Coin coin = client.getBitcoinBalance(address);
@@ -87,7 +67,7 @@ public class BitcoinExtendedClientTest {
 	@Test
 	public void testGetBlockCount() throws Exception {
 		if (client == null) {
-			setUp();
+			setUpBeforeClass();
 		}
 		log.info("getBlockCount(): " + client.getBlockCount());
 		int blockCount = client.getBlockCount();
@@ -97,18 +77,12 @@ public class BitcoinExtendedClientTest {
 
 		Block block = client.getBlock(657810);
 		log.info(block.toString());
-
-		// Sha256Hash hash =
-		// Sha256Hash.wrap("000000000933ea01ad0ee984209779baaec3ced90fa3f408719526f8d77f4943");
-		// log.info(client.getTransaction(hash).toString());
-		// log.info(client.getRawTransaction(hash).toString());
-
 	}
 
 	@Test
 	public void testGetBlockInteger() throws Exception {
 		if (client == null) {
-			setUp();
+			setUpBeforeClass();
 		}
 		int N = 1000;
 		List<Transaction> txs = new LinkedList<Transaction>();
@@ -135,7 +109,14 @@ public class BitcoinExtendedClientTest {
 	}
 
 	void writeBlock(int blockNumber) throws JsonRPCStatusException, IOException {
-		log.info("block " + blockNumber + ":" + client.getBlock(blockNumber).toString());
+		String blockString = "";
+		try {
+			blockString = client.getBlock(blockNumber).toString();
+
+		} catch (Exception e) {
+			log.severe("error retrieving block: " + blockNumber + ". Exception: " + e.getStackTrace().toString());
+		}
+		log.info("block " + blockNumber + ":" + blockString);
 	}
 
 	@Test
@@ -157,11 +138,11 @@ public class BitcoinExtendedClientTest {
 		writeBlock(blocks * 992 / 1000);
 		writeBlock(blocks * 993 / 1000);
 		writeBlock(blocks);
-		Block blockLast = client.getBlock(blocks);
 
-		int i = 10;
-		while (i-- > 0) {
-			Block block = client.getBlock(blocks - 1);
+		int i = blocks;
+		while (i-- > blocks - 100) {
+			Sha256Hash blockHash = client.getBlockHash(i);
+			Block block = client.getBlock(blockHash);
 			List<Transaction> txs = block.getTransactions();
 			for (Transaction t : txs) {
 				log.info(t.toString());
@@ -172,7 +153,7 @@ public class BitcoinExtendedClientTest {
 	@Test
 	public void testGetTransaction() throws Exception {
 		if (client == null) {
-			setUp();
+			setUpBeforeClass();
 		}
 		Sha256Hash txid = Sha256Hash.wrap("f1114ac0d88a47daa8f28573cf539496c69720e4bf4ff42b60b8d8f6902b30ce");
 		// TxOutInfo txo0 = client.getTxOut(txid, 0);
