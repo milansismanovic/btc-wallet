@@ -26,8 +26,7 @@ import org.bitcoinj.params.TestNet3Params;
 import org.consensusj.jsonrpc.JsonRPCStatusException;
 
 import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo;
-import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo;
-import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo.Detail;
+import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo.Vout;
 import com.msgilligan.bitcoinj.rpc.BitcoinExtendedClient;
 import com.msgilligan.bitcoinj.rpc.RPCURI;
 
@@ -82,7 +81,7 @@ public class Bitcoin {
 		List<RawTransactionInfo> txs = new LinkedList<RawTransactionInfo>();
 		int lastBlockNumber = client.getBlockCount();
 		// look half a year in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = lastBlockNumber - 6 * 10 * 24 * 183;
+		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 10 * 24 * 183);
 		// TODO get actual user registration date
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
 		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
@@ -92,18 +91,25 @@ public class Bitcoin {
 				List<Transaction> transactions = block.getTransactions();
 				if (transactions != null) {
 					for (Transaction transaction : transactions) {
-						WalletTransactionInfo transactionInfo = client.getTransaction(transaction.getHash());
-						List<Detail> details = transactionInfo.getDetails();
-						for (Detail detail : details) {
-							String addressStr = detail.getAddress() == null ? null : detail.getAddress().toBase58();
-							if (addresses.contains(addressStr)) {
-								RawTransactionInfo rtw = client.getRawTransactionInfo(transaction.getHash());
-								// skip duplicates
-								if (!txs.contains(rtw)) {
-									txs.add(rtw);
-									break;
+						RawTransactionInfo transactionInfo = client.getRawTransactionInfo(transaction.getHash());
+						List<Vout> vouts = transactionInfo.getVout();
+						boolean found = false;
+						for (Vout vout:vouts) {
+							List<String> adds = vout.getScriptPubKey() == null ? null : vout.getScriptPubKey().getAddresses();
+							if (adds != null) {
+								for (String address : adds) {
+									if (addresses.contains(address)) {
+										if (!txs.contains(transactionInfo)) {
+											txs.add(transactionInfo);
+											found = true;
+											break;
+										}
+									}
 								}
 							}
+						}
+						if (found) {
+							break;
 						}
 					}
 				}
