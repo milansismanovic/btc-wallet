@@ -2,12 +2,14 @@ package rest.bitcoin;
 
 import java.io.IOException;
 import java.net.URI;
-import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Set;
 
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
@@ -19,11 +21,13 @@ import org.bitcoinj.core.Address;
 import org.bitcoinj.core.Block;
 import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
 import org.consensusj.jsonrpc.JsonRPCStatusException;
 
+import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo;
+import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo;
+import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo.Detail;
 import com.msgilligan.bitcoinj.rpc.BitcoinExtendedClient;
 import com.msgilligan.bitcoinj.rpc.RPCURI;
 
@@ -34,7 +38,7 @@ public class Bitcoin {
 	// real keys/address' come from the DB in a later stage
 	final static String clientPrivateKeys1[] = { "92CqrxbHxU1nDQo2N9UkL6bGftcfbh929cYzPSubPshyERqhUK7" };
 	final static String clientPublicKeys1[] = { "03A48BED6D0C1FF608CFBC4F27D7831061A58C927055D0D74B3AD7351E3523D697" };
-	final static String clientAddresses1[] = { "mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH" };
+	final static String clientAddresses1[] = { "mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH", "miQxg3AVaLxZtGEgTbk4YgqU2hu5PoEFDj", "miSnWcTZteByQyJuz4XhVswhHuA5LcFD1i" };
 	final static String clientPrivateKeys3[] = { "KySuyZ6jnGbGW2Qc9VpCk7F8z2rqfaS5EfTsqLxycczaZSuPxJwp" };
 	final static String clientPublicKeys3[] = { "021AD207A99E408F840C0911BD8BCDDA9C6089B23AC0CFBB62D76961018E59C282" };
 	final static String clientAddresses3[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
@@ -66,22 +70,40 @@ public class Bitcoin {
 	@GET
 	@Path("getTransactions")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public List<Transaction> getTransactions() throws JsonRPCStatusException, IOException, ParseException {
+	public List<RawTransactionInfo> getTransactions() throws JsonRPCStatusException, IOException, ParseException {
 		String clientAddresses[] = getClientaddresses1();
+		Set<String> addresses = new HashSet<String>();
+		addresses.addAll(Arrays.asList(clientAddresses));
 		// TODO get all transactions for these addresses and put them in a List of
 		// BitcoinJ transactions using ConsensusJ
 		// go backwards, starting with the last mined block
 		// FIXME return the actual transaction
-		List<Transaction> txs = new LinkedList<Transaction>();
-		// iterate backwards 
-		int blocks = client.getBlockChainInfo().getBlocks();
-		int i = 25000; // max amount of blocks into the past to go through, about half a year
+		List<RawTransactionInfo> txs = new LinkedList<RawTransactionInfo>();
+		int blocks = client.getBlockCount();
+		int maxBlocks = Math.min(25000, blocks); // max amount of blocks into the past to go through, about half a year
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
-		Block block = client.getBlock(blocks);
-		while (i-- > 0 && userRegistered.compareTo(block.getTime()) <= 0) {
-			//FIXME: Add only the transactions that match an address in clientAddresses instead of all
-			txs.addAll(block.getTransactions());
-			block = client.getBlock(blocks);
+		for (int i = 0; i <= maxBlocks; i++) {
+			Block block = client.getBlock(i);
+			if (userRegistered.compareTo(block.getTime()) <= 0) {
+				List<Transaction> transactions = block.getTransactions();
+				if (transactions != null) {
+					for (Transaction transaction : transactions) {
+						WalletTransactionInfo transactionInfo = client.getTransaction(transaction.getHash());
+						List<Detail> details = transactionInfo.getDetails();
+						for (Detail detail : details) {
+							String addressStr = detail.getAddress() == null ? null : detail.getAddress().toBase58();
+							if (addresses.contains(addressStr)) {
+								RawTransactionInfo rtw = client.getRawTransactionInfo(transaction.getHash());
+								// skip duplicates
+								if (!txs.contains(rtw)) {
+									txs.add(rtw);
+									break;
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		return txs;
 	}
