@@ -1,6 +1,7 @@
 package rest.bitcoin;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -9,6 +10,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 
 import javax.ws.rs.GET;
@@ -24,15 +26,17 @@ import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
 import org.consensusj.jsonrpc.JsonRPCStatusException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo;
-import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo;
-import com.msgilligan.bitcoinj.json.pojo.WalletTransactionInfo.Detail;
+import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo.Vout;
 import com.msgilligan.bitcoinj.rpc.BitcoinExtendedClient;
 import com.msgilligan.bitcoinj.rpc.RPCURI;
 
 @Path("bitcoin")
 public class Bitcoin {
+	private static Logger log = LoggerFactory.getLogger(Bitcoin.class);
 	// TODO
 	// fixed keys/address for mocking
 	// real keys/address' come from the DB in a later stage
@@ -82,28 +86,42 @@ public class Bitcoin {
 		List<RawTransactionInfo> txs = new LinkedList<RawTransactionInfo>();
 		int lastBlockNumber = client.getBlockCount();
 		// look half a year in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = lastBlockNumber - 6 * 10 * 24 * 183;
+		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 10 * 24 * 183);
 		// TODO get actual user registration date
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
 		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
-			Block block = client.getBlock(blockNumber);
+			Block block = null;
+			try {
+				block = client.getBlock(blockNumber);
+			} catch (Exception e) {
+				log.error("error getting block: " + blockNumber);
+				continue;
+			}
 			Date blockTime = block.getTime();
 			if (userRegistered.compareTo(blockTime) <= 0) {
 				List<Transaction> transactions = block.getTransactions();
 				if (transactions != null) {
 					for (Transaction transaction : transactions) {
-						WalletTransactionInfo transactionInfo = client.getTransaction(transaction.getHash());
-						List<Detail> details = transactionInfo.getDetails();
-						for (Detail detail : details) {
-							String addressStr = detail.getAddress() == null ? null : detail.getAddress().toBase58();
-							if (addresses.contains(addressStr)) {
-								RawTransactionInfo rtw = client.getRawTransactionInfo(transaction.getHash());
-								// skip duplicates
-								if (!txs.contains(rtw)) {
-									txs.add(rtw);
-									break;
+						RawTransactionInfo transactionInfo = client.getRawTransactionInfo(transaction.getHash());
+						List<Vout> vouts = transactionInfo.getVout();
+						boolean found = false;
+						for (Vout vout : vouts) {
+							List<String> adds = vout.getScriptPubKey() == null ? null
+									: vout.getScriptPubKey().getAddresses();
+							if (adds != null) {
+								for (String address : adds) {
+									if (addresses.contains(address)) {
+										if (!txs.contains(transactionInfo)) {
+											txs.add(transactionInfo);
+											found = true;
+											break;
+										}
+									}
 								}
 							}
+						}
+						if (found) {
+							break;
 						}
 					}
 				}

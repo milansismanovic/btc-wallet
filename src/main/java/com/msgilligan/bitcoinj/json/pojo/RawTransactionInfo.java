@@ -10,6 +10,7 @@ import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.core.TransactionInput;
 import org.bitcoinj.core.TransactionOutput;
+import org.bitcoinj.script.Script;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,12 +73,13 @@ public class RawTransactionInfo {
             vin.add(new Vin(input.getHash(),
                             input.getOutpoint().getIndex(),
                             input.getScriptSig().toString(),
-                            input.getSequenceNumber()));
+                            input.getSequenceNumber(),"0"));
         }
         vout = new VoutList();
         for (TransactionOutput output : transaction.getOutputs()) {
             vout.add(new Vout(output.getValue(),
                                 output.getIndex(),
+                                null,
                                 output.getScriptPubKey().toString()));
         }
     }
@@ -133,15 +135,18 @@ public class RawTransactionInfo {
         public final  long vout;
         public final  Object scriptSig;
         public final  long sequence;
+        public final  String coinbase;
 
         public Vin(@JsonProperty("txid") Sha256Hash txid,
                    @JsonProperty("vout") long vout,
                    @JsonProperty("scriptSig") Object scriptSig,
-                   @JsonProperty("sequence") long sequence) {
+                   @JsonProperty("sequence") long sequence,
+                   @JsonProperty("coinbase") String coinbase) {
             this.txid = txid;
             this.vout = vout;
             this.scriptSig = scriptSig;
             this.sequence = sequence;
+            this.coinbase = coinbase;
         }
 
         public Sha256Hash getTxid() {
@@ -159,19 +164,65 @@ public class RawTransactionInfo {
         public long getSequence() {
             return sequence;
         }
+
+		public String getCoinbase() {
+			return coinbase;
+		}
     }
 
+    public static class ScriptPubKey {
+    	public final  String asm;
+        public final  String hex;
+        public final  int reqSigs;
+        public final  String type;
+        public final List<String> addresses;
+        
+        public ScriptPubKey(@JsonProperty("asm")  String asm,
+        		@JsonProperty("hex")  String hex,
+                @JsonProperty("reqSigs") int reqSigs,
+                @JsonProperty("type")  String type,
+                @JsonProperty("addresses") List<String> addresses) {
+        this.asm = asm;
+        this.hex = hex;
+        this.reqSigs = reqSigs;
+        this.type = type;
+        this.addresses = addresses;
+    }
+
+		public String getAsm() {
+			return asm;
+		}
+
+		public String getHex() {
+			return hex;
+		}
+
+		public int getReqSigs() {
+			return reqSigs;
+		}
+
+		public String getType() {
+			return type;
+		}
+
+		public List<String> getAddresses() {
+			return addresses;
+		}
+    }
     public static class Vout {
         public final  Coin value;
         public final  int n;
-        public final  Object scriptPubKey;
+        public final  ScriptPubKey scriptPubKey;
+        public final  Object scriptPubKeyRaw;
 
         public Vout(@JsonProperty("value")          Coin value,
                     @JsonProperty("n")              int n,
-                    @JsonProperty("scriptPubKey")   Object scriptPubKey) {
+                    @JsonProperty("scriptPubKey")   ScriptPubKey scriptPubKey,
+                    @JsonProperty(value="scriptPubKeyRaw", required=false)   Object scriptPubKeyRaw) {
             this.value = value;
             this.n = n;
             this.scriptPubKey = scriptPubKey;
+            this.scriptPubKeyRaw = null;
         }
 
         public Coin getValue() {
@@ -182,7 +233,7 @@ public class RawTransactionInfo {
             return n;
         }
 
-        public Object getScriptPubKey() {
+        public ScriptPubKey getScriptPubKey() {
             return scriptPubKey;
         }
     }
