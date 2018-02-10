@@ -68,6 +68,16 @@
         	<artifactId>slf4j-simple</artifactId>
         	<version>1.7.25</version>
         </dependency>
+		<dependency>
+			<groupId>com.github.briandilley.jsonrpc4j</groupId>
+			<artifactId>jsonrpc4j</artifactId>
+			<version>1.5.3</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-lang3</artifactId>
+			<version>3.7</version>
+		</dependency>
     </dependencies>
     <properties>
         <jersey.version>2.26</jersey.version>

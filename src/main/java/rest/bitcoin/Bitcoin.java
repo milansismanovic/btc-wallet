@@ -2,7 +2,10 @@ package rest.bitcoin;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.net.MalformedURLException;
 import java.net.URI;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
@@ -25,14 +28,14 @@ import org.bitcoinj.core.Coin;
 import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
-import org.consensusj.jsonrpc.JsonRPCStatusException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo;
-import com.msgilligan.bitcoinj.json.pojo.RawTransactionInfo.Vout;
-import com.msgilligan.bitcoinj.rpc.BitcoinExtendedClient;
-import com.msgilligan.bitcoinj.rpc.RPCURI;
+import com._37coins.bcJsonRpc.BitcoindClientFactory;
+import com._37coins.bcJsonRpc.BitcoindInterface;
+import com._37coins.bcJsonRpc.pojo.RawTransaction;
+import com._37coins.bcJsonRpc.pojo.Vin;
+import com._37coins.bcJsonRpc.pojo.Vout;
 
 @Path("bitcoin")
 public class Bitcoin {
@@ -51,12 +54,12 @@ public class Bitcoin {
 	final static String host = "localhost";
 	String rpcuser = "test";
 	String rpcpassword = "test";
-	BitcoinExtendedClient client;
-	NetworkParameters netParams = TestNet3Params.get();
+	BitcoindInterface client;
 
-	public Bitcoin() {
-		URI server = RPCURI.getDefaultTestNetURI();
-		client = new BitcoinExtendedClient(netParams, server, rpcuser, rpcpassword);
+	public Bitcoin() throws MalformedURLException, IOException {
+		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL("http://" + host + ":18332/"), rpcuser,
+				rpcpassword);
+		client = clientFactory.getClient();
 	}
 
 	String[] getClientprivatekeys1() {
@@ -75,7 +78,7 @@ public class Bitcoin {
 	@GET
 	@Path("getTransactions")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public List<RawTransactionInfo> getTransactions() throws JsonRPCStatusException, IOException, ParseException {
+	public List<RawTransaction> getTransactions() throws ParseException {
 		String clientAddresses[] = getClientaddresses1();
 		Set<String> addresses = new HashSet<String>();
 		addresses.addAll(Arrays.asList(clientAddresses));
@@ -83,45 +86,41 @@ public class Bitcoin {
 		// BitcoinJ transactions using ConsensusJ
 		// go backwards, starting with the last mined block
 		// FIXME return the actual transaction
-		List<RawTransactionInfo> txs = new LinkedList<RawTransactionInfo>();
-		int lastBlockNumber = client.getBlockCount();
-		// look half a year in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 10 * 24 * 183);
-		// TODO get actual user registration date
+		List<RawTransaction> txs = new LinkedList<RawTransaction>();
+		int lastBlockNumber = client.getblockcount();
+		// look one week in the past. assume 1 block per 10 minutes.
+		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 24 * 30 );
+		// FIXME get actual user registration date
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
 		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
-			Block block = null;
+			com._37coins.bcJsonRpc.pojo.Block block = null;
 			try {
-				block = client.getBlock(blockNumber);
+				String blockHash = client.getblockhash(blockNumber);
+				block = client.getblock(blockHash);
 			} catch (Exception e) {
 				log.error("error getting block: " + blockNumber);
-				continue;
+				throw e;
 			}
-			Date blockTime = block.getTime();
+			long timeSecs = block.getTime();
+			Date blockTime = new Date(timeSecs * 1000);
+			log.info(blockTime.toString());
 			if (userRegistered.compareTo(blockTime) <= 0) {
-				List<Transaction> transactions = block.getTransactions();
+				List<String> transactions = block.getTx();
 				if (transactions != null) {
-					for (Transaction transaction : transactions) {
-						RawTransactionInfo transactionInfo = client.getRawTransactionInfo(transaction.getHash());
-						List<Vout> vouts = transactionInfo.getVout();
-						boolean found = false;
-						for (Vout vout : vouts) {
-							List<String> adds = vout.getScriptPubKey() == null ? null
-									: vout.getScriptPubKey().getAddresses();
-							if (adds != null) {
-								for (String address : adds) {
-									if (addresses.contains(address)) {
-										if (!txs.contains(transactionInfo)) {
-											txs.add(transactionInfo);
-											found = true;
-											break;
-										}
-									}
-								}
-							}
+					for (String transactionHash : transactions) {
+						String rawTransaction = client.getrawtransaction(transactionHash);
+						RawTransaction tx = client.decoderawtransaction(rawTransaction);
+						List<Vin> vins = tx.getVin();
+						for (Vin vin : vins) {
+							log.debug(vin.toString());
 						}
-						if (found) {
-							break;
+						List<Vout> vouts = tx.getVout();
+						for (Vout vout : vouts) {
+							log.debug(vout.toString());
+							List<String> txAdresses = vout.getScriptPubKey().getAddresses();
+							if (addresses.contains(txAdresses)) {
+								txs.add(tx);
+							}
 						}
 					}
 				}
@@ -134,16 +133,10 @@ public class Bitcoin {
 	@GET
 	@Path("getBalance")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public Coin getBalance() throws JsonRPCStatusException, IOException {
-		String clientPrivateKeys[] = getClientaddresses1();
+	public BigDecimal getBalance() throws IOException {
 		// TODO get the balance for these addresses and put them in a List of
 		// BitcoinJ transactions using ConsensusJ
-		Coin balance = Coin.valueOf(0);
-		for (String addressBase58 : clientPrivateKeys) {
-			Address address = Address.fromBase58(netParams, addressBase58);
-			Coin addressBalance = client.getBitcoinBalance(address);
-			balance.add(addressBalance);
-		}
+		BigDecimal balance = client.getbalance();
 		return balance;
 	}
 
