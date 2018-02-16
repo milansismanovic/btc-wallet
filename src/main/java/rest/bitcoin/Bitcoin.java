@@ -104,7 +104,8 @@ public class Bitcoin {
 						String rawTransaction = client.getrawtransaction(transactionHash);
 						// TODO decode the rawtransaction with BitcoinJ
 						// code below is failing at reading. works in a JUnit at 
-						// the freshly checked out BitcoinJ Code
+						// the freshly checked out BitcoinJ Code.
+						// suspect and encoding or JAR mix problem.
 //						byte[] rawTransactionBytes = Utils.HEX.decode(rawTransaction);
 //						try {
 //							Transaction bitcoinjTx = new Transaction(TestNet3Params.get(), rawTransactionBytes);
