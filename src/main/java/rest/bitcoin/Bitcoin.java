@@ -1,10 +1,8 @@
 package rest.bitcoin;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -13,7 +11,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Properties;
 import java.util.Set;
 
 import javax.ws.rs.GET;
@@ -22,10 +19,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.Block;
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
 import org.slf4j.Logger;
@@ -86,10 +79,10 @@ public class Bitcoin {
 		// BitcoinJ transactions using ConsensusJ
 		// go backwards, starting with the last mined block
 		// FIXME return the actual transaction
-		List<RawTransaction> txs = new LinkedList<RawTransaction>();
+		Set<RawTransaction> txs = new HashSet<RawTransaction>();
 		int lastBlockNumber = client.getblockcount();
 		// look one week in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 24 * 30 );
+		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 24 * 2);
 		// FIXME get actual user registration date
 		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
 		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
@@ -109,24 +102,54 @@ public class Bitcoin {
 				if (transactions != null) {
 					for (String transactionHash : transactions) {
 						String rawTransaction = client.getrawtransaction(transactionHash);
+						// TODO decode the rawtransaction with BitcoinJ
+						// code below is failing at reading. works in a JUnit at 
+						// the freshly checked out BitcoinJ Code
+//						byte[] rawTransactionBytes = Utils.HEX.decode(rawTransaction);
+//						try {
+//							Transaction bitcoinjTx = new Transaction(TestNet3Params.get(), rawTransactionBytes);
+//							log.info(bitcoinjTx.toString());
+//						} catch (Exception e) {
+//							log.info("failed tx deser: {}, bytes: {}", e.getMessage(), rawTransaction);
+//						}
 						RawTransaction tx = client.decoderawtransaction(rawTransaction);
+						log.debug("transaction: {}", tx);
+						// get the tx matching the inputs from the input txs in vin
 						List<Vin> vins = tx.getVin();
 						for (Vin vin : vins) {
-							log.debug(vin.toString());
+							String vinTxHash = vin.getTxid();
+							if (vinTxHash == null)
+								continue;
+							RawTransaction vinTx = client.decoderawtransaction(client.getrawtransaction(vinTxHash));
+							List<Vout> vouts = vinTx.getVout();
+							for (Vout vout : vouts) {
+								List<String> txAddresses = vout.getScriptPubKey().getAddresses();
+								if (txAddresses == null)
+									continue;
+								for (String txAddress : txAddresses) {
+									if (addresses.contains(txAddress)) {
+										txs.add(tx);
+									}
+								}
+							}
 						}
+						// get the tx matching the outputs
 						List<Vout> vouts = tx.getVout();
 						for (Vout vout : vouts) {
-							log.debug(vout.toString());
-							List<String> txAdresses = vout.getScriptPubKey().getAddresses();
-							if (addresses.contains(txAdresses)) {
-								txs.add(tx);
+							List<String> txAddresses = vout.getScriptPubKey().getAddresses();
+							if (txAddresses == null)
+								continue;
+							for (String txAddress : txAddresses) {
+								if (addresses.contains(txAddress)) {
+									txs.add(tx);
+								}
 							}
 						}
 					}
 				}
 			}
 		}
-		return txs;
+		return new LinkedList<RawTransaction>(txs);
 	}
 
 	// gets the user balance
@@ -145,7 +168,8 @@ public class Bitcoin {
 	@Path("createAddress")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
 	public String createAddress(@QueryParam("publicKey") String publicKey) {
-
+		// TODO requires the usage of the 3 public keys and creates a 2 out of 3 multisig address
+		// one public key is from the client. The rest from the backend.
 		return "32gaYRAvxFgsBZB3LuegK4W4wbx8rNdNX9";
 	}
 
