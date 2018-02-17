@@ -13,6 +13,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 
+import javax.servlet.Servlet;
 import javax.ws.rs.GET;
 import javax.ws.rs.Path;
 import javax.ws.rs.Produces;
@@ -30,6 +31,16 @@ import com._37coins.bcJsonRpc.pojo.RawTransaction;
 import com._37coins.bcJsonRpc.pojo.Vin;
 import com._37coins.bcJsonRpc.pojo.Vout;
 
+/**
+ * This component that exposes all the services with regard to Bitcoin
+ * transactions and transfers.
+ * 
+ * This class exposes the services through Jersey as a {@link Servlet} to the
+ * client.
+ * 
+ * @author milan
+ *
+ */
 @Path("bitcoin")
 public class Bitcoin {
 	private static Logger log = LoggerFactory.getLogger(Bitcoin.class);
@@ -40,6 +51,10 @@ public class Bitcoin {
 	final static String clientPublicKeys1[] = { "03A48BED6D0C1FF608CFBC4F27D7831061A58C927055D0D74B3AD7351E3523D697" };
 	final static String clientAddresses1[] = { "mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH",
 			"miQxg3AVaLxZtGEgTbk4YgqU2hu5PoEFDj", "miSnWcTZteByQyJuz4XhVswhHuA5LcFD1i" };
+	final static String clientPrivateKeys2[] = { "KySuyZ6jnGbGW2Qc9VpCk7F8z2rqfaS5EfTsqLxycczaZSuPxJwp" };
+	final static String clientPublicKeys2[] = { "021AD207A99E408F840C0911BD8BCDDA9C6089B23AC0CFBB62D76961018E59C282" };
+	final static String clientAddresses2[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
+	// FIXME add fresh 3rd key set
 	final static String clientPrivateKeys3[] = { "KySuyZ6jnGbGW2Qc9VpCk7F8z2rqfaS5EfTsqLxycczaZSuPxJwp" };
 	final static String clientPublicKeys3[] = { "021AD207A99E408F840C0911BD8BCDDA9C6089B23AC0CFBB62D76961018E59C282" };
 	final static String clientAddresses3[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
@@ -67,7 +82,14 @@ public class Bitcoin {
 		return clientAddresses1;
 	}
 
-	// gets all user transactions
+	/**
+	 * Gets all user transactions. FIXME: use BitcoinJ Transaction instead of
+	 * BitcoinClient4J RawTransaction.
+	 * 
+	 * @return
+	 * @throws ParseException
+	 *             Thrown if the JSON cannot be read.
+	 */
 	@GET
 	@Path("getTransactions")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
@@ -103,16 +125,17 @@ public class Bitcoin {
 					for (String transactionHash : transactions) {
 						String rawTransaction = client.getrawtransaction(transactionHash);
 						// TODO decode the rawtransaction with BitcoinJ
-						// code below is failing at reading. works in a JUnit at 
+						// code below is failing at reading. works in a JUnit at
 						// the freshly checked out BitcoinJ Code.
 						// suspect and encoding or JAR mix problem.
-//						byte[] rawTransactionBytes = Utils.HEX.decode(rawTransaction);
-//						try {
-//							Transaction bitcoinjTx = new Transaction(TestNet3Params.get(), rawTransactionBytes);
-//							log.info(bitcoinjTx.toString());
-//						} catch (Exception e) {
-//							log.info("failed tx deser: {}, bytes: {}", e.getMessage(), rawTransaction);
-//						}
+						// byte[] rawTransactionBytes = Utils.HEX.decode(rawTransaction);
+						// try {
+						// Transaction bitcoinjTx = new Transaction(TestNet3Params.get(),
+						// rawTransactionBytes);
+						// log.info(bitcoinjTx.toString());
+						// } catch (Exception e) {
+						// log.info("failed tx deser: {}, bytes: {}", e.getMessage(), rawTransaction);
+						// }
 						RawTransaction tx = client.decoderawtransaction(rawTransaction);
 						log.debug("transaction: {}", tx);
 						// get the tx matching the inputs from the input txs in vin
@@ -153,28 +176,46 @@ public class Bitcoin {
 		return new LinkedList<RawTransaction>(txs);
 	}
 
-	// gets the user balance
+	/**
+	 * Gets the user balance.
+	 * 
+	 * @return
+	 */
 	@GET
 	@Path("getBalance")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public BigDecimal getBalance() throws IOException {
+	public BigDecimal getBalance() {
 		// TODO get the balance for these addresses and put them in a List of
 		// BitcoinJ transactions using ConsensusJ
 		BigDecimal balance = client.getbalance();
 		return balance;
 	}
 
-	// create a 2 out of 2 multi sign address
+	/**
+	 * Create a 2 out of 3 multi sign address using {@code userPublicKey} as the
+	 * first public key. Take 2nd and 3rd from the server.
+	 * 
+	 * @param userPublicKey
+	 * @return
+	 */
 	@GET
 	@Path("createAddress")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public String createAddress(@QueryParam("publicKey") String publicKey) {
-		// TODO requires the usage of the 3 public keys and creates a 2 out of 3 multisig address
+	public String createAddress(@QueryParam("publicKey") String userPublicKey) {
+		// TODO requires the usage of the 3 public keys and creates a 2 out of 3
+		// multisig address
 		// one public key is from the client. The rest from the backend.
 		return "32gaYRAvxFgsBZB3LuegK4W4wbx8rNdNX9";
 	}
 
-	// returns array of UTXOs to sign
+	/**
+	 * Creates a list of user's UTXOs for the client to sign.
+	 * 
+	 * @param toAddress
+	 * @param satoshiAmount
+	 * @param changeAddress
+	 * @return array of UTXOs to sign
+	 */
 	@GET
 	@Path("startTransaction")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
@@ -188,7 +229,13 @@ public class Bitcoin {
 		return txs;
 	}
 
-	// returns transaction id
+	/**
+	 * Sign the transaction from the server with the user's server key and broadcast
+	 * it.
+	 * 
+	 * @param signedTX
+	 * @return transaction id
+	 */
 	@GET
 	@Path("executeTransaction")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })

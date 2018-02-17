@@ -30,6 +30,9 @@
 		<label>associated private key: KxKGLjQDWSmYsx4wVxCSmPYN3DAGqb16ajy2wENgKtud9H4HvwJq</label> 
 	</form>
 
+    <h2>Javadoc</h2>
+    <p><a href="javadoc">Javadoc</a>
+
     <h2>Jersey RESTful Web Application!</h2>
     <p><a href="webapi/myresource">Jersey resource</a>
     <p>Visit <a href="http://jersey.java.net">Project Jersey website</a>
