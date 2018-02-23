@@ -1,5 +1,6 @@
 package rest.bitcoin;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
@@ -18,6 +19,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.bitcoinj.core.Transaction;
 import org.bitcoinj.params.TestNet3Params;
 import org.slf4j.Logger;
@@ -60,15 +64,14 @@ public class Bitcoin {
 	final static String clientPublicKeys3[] = { "021AD207A99E408F840C0911BD8BCDDA9C6089B23AC0CFBB62D76961018E59C282" };
 	final static String clientAddresses3[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
 
-	final static String host = "localhost";
-	final static String rpcuser = "test";
-	final static String rpcpassword = "test";
 	static BitcoindInterface client;
 	static BlockStore store;
+	static Configuration config;
 
-	public Bitcoin() throws MalformedURLException, IOException, BlockStoreException {
-		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL("http://" + host + ":18332/"), rpcuser,
-				rpcpassword);
+	public Bitcoin() throws MalformedURLException, IOException, BlockStoreException, ConfigurationException {
+		config = new Configurations().properties(new File("bitcoin.properties"));
+		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
+				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
 		store = new DBBlockStore();
 	}
@@ -86,6 +89,12 @@ public class Bitcoin {
 	}
 
 	static long lastRefresh = -1;
+
+	// TODO create anonymous inner class to run the sync to update the db
+	// ensure the thread is only spanned once.
+	class DBRefresher {
+
+	}
 
 	void refreshDB() {
 		if (System.currentTimeMillis() - lastRefresh < 1000 * 30) {

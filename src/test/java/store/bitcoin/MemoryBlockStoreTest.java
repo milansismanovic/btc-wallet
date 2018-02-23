@@ -1,11 +1,15 @@
 package store.bitcoin;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -19,18 +23,16 @@ import store.bitcoin.pojo.StoredBlock;
 
 public class MemoryBlockStoreTest {
 	private static final Logger log = LoggerFactory.getLogger(MemoryBlockStoreTest.class);
-	private static final String host = "localhost";
-	private static final String rpcuser = "test";
-	private static final String rpcpassword = "test";
 	private static MemoryBlockStore store;
 	private static BitcoindInterface client;
 	private static StoreLoader storeLoader;
 
 	@BeforeClass
-	public static void setUpBeforeClass() throws BlockStoreException, MalformedURLException, IOException {
+	public static void setUpBeforeClass() throws BlockStoreException, MalformedURLException, IOException, ConfigurationException {
 		store = new MemoryBlockStore();
-		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL("http://" + host + ":18332/"), rpcuser,
-				rpcpassword);
+		Configuration config = new Configurations().properties(new File("bitcoin.properties"));
+		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
+				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
 		storeLoader = new StoreLoader(store, client);
 	}
@@ -42,7 +44,7 @@ public class MemoryBlockStoreTest {
 	@Test
 	public void test() throws Exception {
 		store.resetStore();
-		int n = 6 * 10 * 24; // 1 day in the past
+		int n = 6 * 24; // 1 day in the past
 		log.info("blockCount: {}. Loading {} blocks.", client.getblockcount(), n);
 		storeLoader.loadStore(n);
 		// iterate through the blocks in the store

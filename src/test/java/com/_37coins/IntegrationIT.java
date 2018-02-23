@@ -2,12 +2,16 @@ package com._37coins;
 
 import static org.junit.Assert.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.List;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -26,9 +30,10 @@ public class IntegrationIT {
 	static BitcoindInterface client;
 
 	@BeforeClass
-	static public void before() throws MalformedURLException, IOException {
-		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL("http://localhost:18332/"), "test",
-				"test");
+	static public void before() throws MalformedURLException, IOException, ConfigurationException {
+		Configuration config = new Configurations().properties(new File("bitcoin.properties"));
+		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
+				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
 	}
 

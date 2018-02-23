@@ -2,6 +2,7 @@ package store.bitcoin;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -18,6 +19,9 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.builder.fluent.Configurations;
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.bitcoinj.core.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,10 +41,10 @@ import store.bitcoin.pojo.StoredVout;
  */
 public class DBBlockStore extends BlockStore {
 	private static final Logger log = LoggerFactory.getLogger(DBBlockStore.class);
-	private static final String DB_HOSTNAME = "localhost";
-	private static final String DB_NAME = "bitcoin_test";
-	private static final String DB_USERNAME = "bitcoin";
-	private static final String DB_PASSWORD = "password";
+//	private static final String DB_HOSTNAME = "localhost";
+//	private static final String DB_NAME = "bitcoin_test";
+//	private static final String DB_USERNAME = "bitcoin";
+//	private static final String DB_PASSWORD = "password";
 
 	// private static final String DATABASE_DRIVER_CLASS = "com.mysql.jdbc.Driver";
 	private static final String DATABASE_DRIVER_CLASS = "com.mysql.cj.jdbc.Driver";
@@ -85,6 +89,7 @@ public class DBBlockStore extends BlockStore {
 			+ "    time,\r\n" + "    previousblockhash\r\n" + "FROM blockheaders\r\n" + "WHERE hash = ?;";
 	private static final String SELECT_ADDRESSTRANSACTIONS = "SELECT `id`,`txid`,`address` FROM `addresstransactions` ";
 
+	protected String hostname;
 	protected String username;
 	protected String password;
 	protected String schemaName;
@@ -92,10 +97,17 @@ public class DBBlockStore extends BlockStore {
 
 	Connection connection;
 
-	public DBBlockStore() throws BlockStoreException {
-		this.connectionURL = DATABASE_CONNECTION_URL_PREFIX + DB_HOSTNAME + "/" + DB_NAME;
-		this.username = DB_USERNAME;
-		this.password = DB_PASSWORD;
+	public DBBlockStore() throws BlockStoreException, ConfigurationException {
+		Configuration config = new Configurations().properties(new File("bitcoin.properties"));
+		this.hostname = config.getString("db.host");
+		this.schemaName = config.getString("db.name");
+		this.username = config.getString("db.user");
+		this.password = config.getString("db.password");
+		if (hostname == null || schemaName == null || username == null || password == null) {
+			throw new ConfigurationException(
+					"one of the configuration items: 'db.host', 'db.name', 'db.user', 'db.password' is missing");
+		}
+		this.connectionURL = DATABASE_CONNECTION_URL_PREFIX + hostname + "/" + schemaName;
 		try {
 			Class.forName(DATABASE_DRIVER_CLASS);
 			log.info(DATABASE_DRIVER_CLASS + " loaded. ");
