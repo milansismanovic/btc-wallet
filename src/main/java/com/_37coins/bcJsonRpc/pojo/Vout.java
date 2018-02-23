@@ -1,5 +1,6 @@
 package com._37coins.bcJsonRpc.pojo;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
@@ -18,7 +19,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 public class Vout {
 
 	@JsonProperty("value")
-	private Double value;
+	private BigDecimal value;
 	@JsonProperty("n")
 	private Integer n;
 	@JsonProperty("scriptPubKey")
@@ -27,12 +28,12 @@ public class Vout {
 	private Map<String, Object> additionalProperties = new HashMap<String, Object>();
 
 	@JsonProperty("value")
-	public Double getValue() {
+	public BigDecimal getValue() {
 		return value;
 	}
 
 	@JsonProperty("value")
-	public void setValue(Double value) {
+	public void setValue(BigDecimal value) {
 		this.value = value;
 	}
 

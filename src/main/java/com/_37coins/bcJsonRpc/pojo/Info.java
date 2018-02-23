@@ -117,4 +117,13 @@ public class Info {
 	public void setRelayfee(BigDecimal relayfee) {
 		this.relayfee = relayfee;
 	}
+	@Override
+	public String toString() {
+		return "Info [version=" + version + ", protocolversion=" + protocolversion + ", walletversion=" + walletversion
+				+ ", balance=" + balance + ", blocks=" + blocks + ", timeoffset=" + timeoffset + ", connections="
+				+ connections + ", proxy=" + proxy + ", difficulty=" + difficulty + ", testnet=" + testnet
+				+ ", keypoololdest=" + keypoololdest + ", keypoolsize=" + keypoolsize + ", paytxfee=" + paytxfee
+				+ ", relayfee=" + relayfee + ", errors=" + errors + "]";
+	}
+	
 }

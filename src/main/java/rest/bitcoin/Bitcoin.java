@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
@@ -27,9 +25,12 @@ import org.slf4j.LoggerFactory;
 
 import com._37coins.bcJsonRpc.BitcoindClientFactory;
 import com._37coins.bcJsonRpc.BitcoindInterface;
-import com._37coins.bcJsonRpc.pojo.RawTransaction;
-import com._37coins.bcJsonRpc.pojo.Vin;
-import com._37coins.bcJsonRpc.pojo.Vout;
+
+import store.bitcoin.BlockStore;
+import store.bitcoin.BlockStoreException;
+import store.bitcoin.DBBlockStore;
+import store.bitcoin.StoreLoader;
+import store.bitcoin.pojo.StoredTransaction;
 
 /**
  * This component that exposes all the services with regard to Bitcoin
@@ -60,14 +61,16 @@ public class Bitcoin {
 	final static String clientAddresses3[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
 
 	final static String host = "localhost";
-	String rpcuser = "test";
-	String rpcpassword = "test";
-	BitcoindInterface client;
+	final static String rpcuser = "test";
+	final static String rpcpassword = "test";
+	static BitcoindInterface client;
+	static BlockStore store;
 
-	public Bitcoin() throws MalformedURLException, IOException {
+	public Bitcoin() throws MalformedURLException, IOException, BlockStoreException {
 		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL("http://" + host + ":18332/"), rpcuser,
 				rpcpassword);
 		client = clientFactory.getClient();
+		store = new DBBlockStore();
 	}
 
 	String[] getClientprivatekeys1() {
@@ -82,6 +85,25 @@ public class Bitcoin {
 		return clientAddresses1;
 	}
 
+	static long lastRefresh = -1;
+
+	void refreshDB() {
+		if (System.currentTimeMillis() - lastRefresh < 1000 * 30) {
+			return;
+		}
+		Thread refreshDBRunnable = new Thread() {
+			public void run() {
+				try {
+					new StoreLoader(store, client).loadStore(1000);
+					lastRefresh = System.currentTimeMillis();
+				} catch (BlockStoreException e) {
+					log.error("error refreshing block store", e);
+				}
+			}
+		};
+		refreshDBRunnable.start();
+	}
+
 	/**
 	 * Gets all user transactions. FIXME: use BitcoinJ Transaction instead of
 	 * BitcoinClient4J RawTransaction.
@@ -89,91 +111,20 @@ public class Bitcoin {
 	 * @return
 	 * @throws ParseException
 	 *             Thrown if the JSON cannot be read.
+	 * @throws BlockStoreException
 	 */
 	@GET
 	@Path("getTransactions")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public List<RawTransaction> getTransactions() throws ParseException {
+	public List<StoredTransaction> getTransactions() throws BlockStoreException {
+		refreshDB();
 		String clientAddresses[] = getClientaddresses1();
 		Set<String> addresses = new HashSet<String>();
 		addresses.addAll(Arrays.asList(clientAddresses));
-		// TODO get all transactions for these addresses and put them in a List of
-		// BitcoinJ transactions using ConsensusJ
-		// go backwards, starting with the last mined block
-		// FIXME return the actual transaction
-		Set<RawTransaction> txs = new HashSet<RawTransaction>();
-		int lastBlockNumber = client.getblockcount();
-		// look one week in the past. assume 1 block per 10 minutes.
-		int deepestBlockNumber = Math.max(0, lastBlockNumber - 6 * 24 * 2);
-		// FIXME get actual user registration date
-		Date userRegistered = new SimpleDateFormat("dd.MM.yyyy").parse("01.01.2018");
-		for (int blockNumber = lastBlockNumber; blockNumber >= deepestBlockNumber; blockNumber--) {
-			com._37coins.bcJsonRpc.pojo.Block block = null;
-			try {
-				String blockHash = client.getblockhash(blockNumber);
-				block = client.getblock(blockHash);
-			} catch (Exception e) {
-				log.error("error getting block: " + blockNumber);
-				throw e;
-			}
-			long timeSecs = block.getTime();
-			Date blockTime = new Date(timeSecs * 1000);
-			log.info(blockTime.toString());
-			if (userRegistered.compareTo(blockTime) <= 0) {
-				List<String> transactions = block.getTx();
-				if (transactions != null) {
-					for (String transactionHash : transactions) {
-						String rawTransaction = client.getrawtransaction(transactionHash);
-						// TODO decode the rawtransaction with BitcoinJ
-						// code below is failing at reading. works in a JUnit at
-						// the freshly checked out BitcoinJ Code.
-						// suspect and encoding or JAR mix problem.
-						// byte[] rawTransactionBytes = Utils.HEX.decode(rawTransaction);
-						// try {
-						// Transaction bitcoinjTx = new Transaction(TestNet3Params.get(),
-						// rawTransactionBytes);
-						// log.info(bitcoinjTx.toString());
-						// } catch (Exception e) {
-						// log.info("failed tx deser: {}, bytes: {}", e.getMessage(), rawTransaction);
-						// }
-						RawTransaction tx = client.decoderawtransaction(rawTransaction);
-						log.debug("transaction: {}", tx);
-						// get the tx matching the inputs from the input txs in vin
-						List<Vin> vins = tx.getVin();
-						for (Vin vin : vins) {
-							String vinTxHash = vin.getTxid();
-							if (vinTxHash == null)
-								continue;
-							RawTransaction vinTx = client.decoderawtransaction(client.getrawtransaction(vinTxHash));
-							List<Vout> vouts = vinTx.getVout();
-							for (Vout vout : vouts) {
-								List<String> txAddresses = vout.getScriptPubKey().getAddresses();
-								if (txAddresses == null)
-									continue;
-								for (String txAddress : txAddresses) {
-									if (addresses.contains(txAddress)) {
-										txs.add(tx);
-									}
-								}
-							}
-						}
-						// get the tx matching the outputs
-						List<Vout> vouts = tx.getVout();
-						for (Vout vout : vouts) {
-							List<String> txAddresses = vout.getScriptPubKey().getAddresses();
-							if (txAddresses == null)
-								continue;
-							for (String txAddress : txAddresses) {
-								if (addresses.contains(txAddress)) {
-									txs.add(tx);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-		return new LinkedList<RawTransaction>(txs);
+		log.info("getting stored txs");
+		List<StoredTransaction> stxs = store.getTx(Arrays.asList(clientAddresses));
+		log.info("user's stored tx({}): {}", stxs.size(), stxs.toString());
+		return stxs;
 	}
 
 	/**

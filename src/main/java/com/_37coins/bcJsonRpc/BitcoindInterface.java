@@ -8,6 +8,7 @@ import com._37coins.bcJsonRpc.pojo.Account;
 import com._37coins.bcJsonRpc.pojo.Address;
 import com._37coins.bcJsonRpc.pojo.AddressInformation;
 import com._37coins.bcJsonRpc.pojo.Block;
+import com._37coins.bcJsonRpc.pojo.BlockVerbose;
 import com._37coins.bcJsonRpc.pojo.Info;
 import com._37coins.bcJsonRpc.pojo.LastBlock;
 import com._37coins.bcJsonRpc.pojo.RawTransaction;
@@ -46,6 +47,8 @@ public interface BitcoindInterface {
 	public BigDecimal getbalance(String account, int minimumConfirmations);
 	//Returns information about the block with the given hash.
 	public Block getblock(String blockHash);
+	//Returns information about the block with the given hash.
+	public BlockVerbose getblock(String blockHash, int verbosity);
 	//Returns the number of blocks in the longest block chain.
 	public int getblockcount();
 	//Returns hash of block in best-block-chain at <index>; index 0 is the genesis block
