@@ -1,10 +1,8 @@
 package store.bitcoin;
 
-import java.io.Serializable;
 import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -132,14 +130,6 @@ public class MemoryBlockStore extends BlockStore{
 			}
 		}
 		return stxs;
-//		TreeSet<StoredTransaction> stxs = new TreeSet<>();
-//		for (String address : addresses) {
-//			Set<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
-//			if (thisaddressTxs != null) {
-//				stxs.addAll(thisaddressTxs);
-//			}
-//		}
-//		return stxs;
 	}
 
 	@Override
@@ -185,8 +175,19 @@ public class MemoryBlockStore extends BlockStore{
 
 	@Override
 	public SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
-		throw new RuntimeException("not yet implemented");
+		SortedSet<StoredTransaction> utxos = new TreeSet<>();
+		SortedSet<StoredTransaction> allTx = getTx(addresses);
+		for(StoredTransaction tx:allTx) {
+			if(tx.getVouts()!=null) {
+				for(StoredVout vout:tx.getVouts()) {
+					if(vout.isUnspent()) {
+						utxos.add(tx);
+						continue;
+					}
+				}
+			}
+		}
+		return utxos;
 	}
 
 	@Override

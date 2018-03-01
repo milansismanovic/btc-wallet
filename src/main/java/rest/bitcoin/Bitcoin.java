@@ -33,7 +33,6 @@ import com._37coins.bcJsonRpc.BitcoindInterface;
 
 import store.bitcoin.BlockStore;
 import store.bitcoin.BlockStoreException;
-import store.bitcoin.DBBlockStore;
 import store.bitcoin.MemoryBlockStore;
 import store.bitcoin.StoreLoader;
 import store.bitcoin.pojo.StoredTransaction;

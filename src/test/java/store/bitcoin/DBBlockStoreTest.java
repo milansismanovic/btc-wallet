@@ -4,8 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
@@ -13,7 +11,6 @@ import java.util.SortedSet;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.commons.dbutils.ResultSetHandler;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -22,7 +19,6 @@ import org.slf4j.LoggerFactory;
 
 import com._37coins.bcJsonRpc.BitcoindClientFactory;
 import com._37coins.bcJsonRpc.BitcoindInterface;
-import com.mysql.cj.jdbc.result.ResultSetMetaData;
 
 import store.bitcoin.pojo.StoredBlock;
 import store.bitcoin.pojo.StoredTransaction;

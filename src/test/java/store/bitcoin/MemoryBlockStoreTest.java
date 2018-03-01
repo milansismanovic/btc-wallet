@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.SortedSet;
@@ -65,6 +66,12 @@ public class MemoryBlockStoreTest {
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
 		SortedSet<StoredTransaction> txs = store.getTx(addresses);
 		log.info("number of txs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", txs.size());
+		writeTransactions(txs);
+		log.info("number of utxs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", store.getUnspentTx(addresses).size());
+		writeTransactions(store.getUnspentTx(addresses));
+	}
+
+	void writeTransactions(Collection<StoredTransaction> txs) {
 		for (StoredTransaction tx : txs) {
 			log.info("tx: {}", tx);
 			if (tx.getVins() != null) {
