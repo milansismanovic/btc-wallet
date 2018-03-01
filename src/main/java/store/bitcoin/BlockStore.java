@@ -1,6 +1,7 @@
 package store.bitcoin;
 
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.List;
 import java.util.SortedSet;
 
@@ -46,9 +47,9 @@ public abstract class BlockStore {
 
 	public abstract void put(StoredBlock block) throws BlockStoreException;
 
-	public abstract SortedSet<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException;
+	public abstract SortedSet<StoredTransaction> getTx(Collection<String> addresses) throws BlockStoreException;
 
-	public abstract SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException;
+	public abstract SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException;
 
 	public abstract BigInteger getBalance(List<String> addresses) throws BlockStoreException;
 

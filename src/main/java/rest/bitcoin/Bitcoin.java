@@ -7,10 +7,9 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.text.ParseException;
 import java.util.Arrays;
-import java.util.HashSet;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Set;
 import java.util.SortedSet;
 
 import javax.servlet.Servlet;
@@ -36,6 +35,7 @@ import store.bitcoin.BlockStoreException;
 import store.bitcoin.MemoryBlockStore;
 import store.bitcoin.StoreLoader;
 import store.bitcoin.pojo.StoredTransaction;
+import store.bitcoin.pojo.StoredVout;
 
 /**
  * This component that exposes all the services with regard to Bitcoin
@@ -76,11 +76,11 @@ public class Bitcoin {
 				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
 		// store = new DBBlockStore();
-		if(store==null)
+		if (store == null)
 			store = new MemoryBlockStore();
-		if(storeLoader==null)
+		if (storeLoader == null)
 			storeLoader = new StoreLoader(store, client);
-		storeLoader.loadStore(6 * 24 * 28); // 28 days in the past);
+		storeLoader.loadStore(6 * 24 * 20); // 28 days in the past);
 	}
 
 	String[] getClientprivatekeys1() {
@@ -91,8 +91,10 @@ public class Bitcoin {
 		return clientPublicKeys1;
 	}
 
-	String[] getClientaddresses1() {
-		return clientAddresses1;
+	Collection<String> getClientaddresses1() {
+		Collection<String> addresses = new LinkedList<>();
+		addresses.addAll(Arrays.asList(clientAddresses1));
+		return addresses;
 	}
 
 	static long lastRefresh = -1;
@@ -135,11 +137,8 @@ public class Bitcoin {
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
 	public SortedSet<StoredTransaction> getTransactions() throws BlockStoreException {
 		refreshDB();
-		String clientAddresses[] = getClientaddresses1();
-		Set<String> addresses = new HashSet<String>();
-		addresses.addAll(Arrays.asList(clientAddresses));
 		log.info("getting stored txs");
-		SortedSet<StoredTransaction> stxs = store.getTx(Arrays.asList(clientAddresses));
+		SortedSet<StoredTransaction> stxs = store.getTx(getClientaddresses1());
 		log.info("user's stored tx({}): {}", stxs.size(), stxs.toString());
 		return stxs;
 	}
@@ -148,14 +147,23 @@ public class Bitcoin {
 	 * Gets the user balance.
 	 * 
 	 * @return
+	 * @throws BlockStoreException 
 	 */
 	@GET
 	@Path("getBalance")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public BigDecimal getBalance() {
+	public BigDecimal getBalance() throws BlockStoreException {
 		// TODO get the balance for these addresses and put them in a List of
 		// BitcoinJ transactions using ConsensusJ
-		BigDecimal balance = client.getbalance();
+		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
+		BigDecimal balance = new BigDecimal(0);
+		for(StoredTransaction utxo:utxos) {
+			for(StoredVout vout:utxo.getVouts()) {
+				if(vout.isUnspent()) {
+					balance = balance.add(vout.getAmount());
+				}
+			}
+		}
 		return balance;
 	}
 

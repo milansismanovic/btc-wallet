@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 import java.util.SortedSet;
@@ -356,7 +357,7 @@ public class DBBlockStore extends BlockStore {
 		return tx;
 	}
 
-	public SortedSet<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getTx(Collection<String> addresses) throws BlockStoreException {
 		SortedSet<StoredTransaction> txs = new TreeSet<>();
 		// FIXME there is probably a more elegant way to have a multi value where
 		// clause than to manually construct the sql select statement...
@@ -364,16 +365,28 @@ public class DBBlockStore extends BlockStore {
 		sql.append(SELECT_ADDRESSTRANSACTIONS);
 		sql.append("WHERE address in (");
 
-		for (int i = 0; i < addresses.size(); i++) {
+		int i = 0;
+		for (String address : addresses) {
 			sql.append("\"");
-			sql.append(addresses.get(i));
+			sql.append(address);
 			// if last omit the comma
 			if (i < addresses.size() - 1) {
 				sql.append("\",");
 			} else {
 				sql.append("\"");
 			}
+			i++;
 		}
+//		for (int i = 0; i < addresses.size(); i++) {
+//			sql.append("\"");
+//			sql.append(addresses.get(i));
+//			// if last omit the comma
+//			if (i < addresses.size() - 1) {
+//				sql.append("\",");
+//			} else {
+//				sql.append("\"");
+//			}
+//		}
 		sql.append(")");
 		try {
 			// get the txid list to rs
@@ -408,7 +421,7 @@ public class DBBlockStore extends BlockStore {
 		return txs;
 	}
 
-	public SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -450,6 +463,5 @@ public class DBBlockStore extends BlockStore {
 			throw new BlockStoreException("serialization error converting StoredTransaction", e);
 		}
 	}
-
 
 }

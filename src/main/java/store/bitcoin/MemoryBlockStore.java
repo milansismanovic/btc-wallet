@@ -121,7 +121,7 @@ public class MemoryBlockStore extends BlockStore{
 	}
 
 	@Override
-	public SortedSet<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getTx(Collection<String> addresses) throws BlockStoreException {
 		SortedSet<StoredTransaction> stxs = new TreeSet<>();
 		for (String address : addresses) {
 			Set<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
@@ -174,7 +174,7 @@ public class MemoryBlockStore extends BlockStore{
 	}
 
 	@Override
-	public SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException {
 		SortedSet<StoredTransaction> utxos = new TreeSet<>();
 		SortedSet<StoredTransaction> allTx = getTx(addresses);
 		for(StoredTransaction tx:allTx) {
