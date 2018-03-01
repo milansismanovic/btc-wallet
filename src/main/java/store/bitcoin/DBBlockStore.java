@@ -41,10 +41,10 @@ import store.bitcoin.pojo.StoredVout;
  */
 public class DBBlockStore extends BlockStore {
 	private static final Logger log = LoggerFactory.getLogger(DBBlockStore.class);
-//	private static final String DB_HOSTNAME = "localhost";
-//	private static final String DB_NAME = "bitcoin_test";
-//	private static final String DB_USERNAME = "bitcoin";
-//	private static final String DB_PASSWORD = "password";
+	// private static final String DB_HOSTNAME = "localhost";
+	// private static final String DB_NAME = "bitcoin_test";
+	// private static final String DB_USERNAME = "bitcoin";
+	// private static final String DB_PASSWORD = "password";
 
 	// private static final String DATABASE_DRIVER_CLASS = "com.mysql.jdbc.Driver";
 	private static final String DATABASE_DRIVER_CLASS = "com.mysql.cj.jdbc.Driver";
@@ -229,6 +229,34 @@ public class DBBlockStore extends BlockStore {
 		return null;
 	}
 
+	public StoredBlock get(int height) {
+		try {
+			String sql = "SELECT `blockheaders`.`hash`,\r\n" + "    `blockheaders`.`height`,\r\n"
+					+ "    `blockheaders`.`time`,\r\n" + "    `blockheaders`.`previousblockhash`\r\n"
+					+ "FROM `bitcoin_test`.`blockheaders`;\r\n" + "WHERE height=?";
+			PreparedStatement s = connection.prepareStatement(sql);
+			s.setInt(1, height);
+			ResultSet rs = s.executeQuery();
+			if (rs.next()) {
+				byte[] hashbytes = rs.getBytes(1);
+				String hash2 = Utils.HEX.encode(hashbytes);
+				Timestamp timeStamp = rs.getTimestamp(3);
+				long time = timeStamp.getTime() / 1000;
+				byte[] previousHash = rs.getBytes(4);
+				String previousblockhash = Utils.HEX.encode(previousHash);
+				StoredBlock block = new StoredBlock(hash2, height, time, previousblockhash, null);
+				// TODO get txs here
+				return block;
+			} else {
+				return null;
+			}
+		} catch (SQLException e) {
+			log.debug("couldn't find block with this hash: {}", height);
+		}
+		return null;
+
+	}
+
 	/**
 	 * Puts a block into the store.
 	 */
@@ -266,6 +294,9 @@ public class DBBlockStore extends BlockStore {
 					log.debug(stx.toString());
 				stx.executeUpdate();
 				stx.close();
+				// put for each address in vout an entry in the addresstransaction table
+				// consider putting only our clients' address-transaction combinations in
+				// the future
 				PreparedStatement satx = connection.prepareStatement(INSERT_ADDRESSTRANSACTIONS);
 				for (StoredVout vout : tx.getVouts()) {
 					List<String> addresses = vout.getAddresses();
@@ -284,14 +315,44 @@ public class DBBlockStore extends BlockStore {
 				satx.executeBatch();
 				satx.close();
 			}
-			// put txs including their vins and vouts to db
-			// TODO implement
+			// put txs vins to db
+			// TODO implement - ACTUALLY CAN'T AS WE PROBABLY DON'T HAVE THE PREVIOUS
+			// TRANSACTION YET LOADED/PUT INTO THE DB
 		} catch (SQLException e) {
 			throw new BlockStoreException("error inserting block", e);
 		} catch (IOException e) {
 			throw new BlockStoreException("error serializing tx", e);
 		}
 		updateChainHead(block);
+	}
+
+	void updateVins() {
+		// go through the blockchain and update the vins for all tx
+
+	}
+
+	public StoredTransaction getTx(String txid) {
+		// get all tx from the transactions table
+		String txsql = "SELECT `txblob` FROM `transactions` WHERE txid=?;";
+		PreparedStatement txstmt;
+		byte[] txidBytes = Utils.HEX.decode(txid);
+		StoredTransaction tx = null;
+		try {
+			txstmt = connection.prepareStatement(txsql);
+			txstmt.setBytes(1, txidBytes);
+			ResultSet txrs = txstmt.executeQuery();
+			if (txrs.next()) {
+				byte[] txBytes = txrs.getBytes(1);
+				ByteArrayInputStream baip = new ByteArrayInputStream(txBytes);
+				ObjectInputStream ois = new ObjectInputStream(baip);
+				Object object = ois.readObject();
+				tx = (StoredTransaction) object;
+			}
+		} catch (Exception e) {
+			// don't care if it fails as we return null then
+			// most likely because tx is not stored
+		}
+		return tx;
 	}
 
 	public List<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
@@ -356,27 +417,38 @@ public class DBBlockStore extends BlockStore {
 		return null;
 	}
 
-	public void test() throws BlockStoreException {
-		// try {
-		// // get
-		// String txsql = "SELECT txblob FROM `transactions`;";
-		// PreparedStatement txstmt = connection.prepareStatement(txsql);
-		// ResultSet txrs = txstmt.executeQuery();
-		// while (txrs.next()) {
-		// byte[] txBytes = txrs.getBytes(1);
-		// ByteArrayInputStream baip = new ByteArrayInputStream(txBytes);
-		// ObjectInputStream ois = new ObjectInputStream(baip);
-		// StoredTransaction tx = (StoredTransaction) ois.readObject();
-		// log.info(tx.toString());
-		// }
-		// } catch (SQLException e) {
-		// throw new BlockStoreException("db error fetching transactions", e);
-		// } catch (IOException e) {
-		// throw new BlockStoreException("serialization error converting transactions",
-		// e);
-		// } catch (ClassNotFoundException e) {
-		// throw new BlockStoreException("serialization error converting
-		// StoredTransaction", e);
-		// }
+	@Override
+	public void updateUTXO(StoredTransaction tx, StoredTransaction parentTx, int parentVoutIndex)
+			throws BlockStoreException {
+		// TODO Auto-generated method stub
 	}
+
+	public void test(List<String> addresses) throws BlockStoreException {
+		try {
+			// get all tx for this address
+			List<StoredTransaction> txs = getTx(addresses);
+			for (StoredTransaction tx : txs) {
+				log.info(tx.toString());
+				// get
+				String txsql = "SELECT txblob FROM `transactions`;";
+				PreparedStatement txstmt = connection.prepareStatement(txsql);
+				ResultSet txrs = txstmt.executeQuery();
+				while (txrs.next()) {
+					byte[] txBytes = txrs.getBytes(1);
+					ByteArrayInputStream baip = new ByteArrayInputStream(txBytes);
+					ObjectInputStream ois = new ObjectInputStream(baip);
+					StoredTransaction txR = (StoredTransaction) ois.readObject();
+					log.info(txR.toString());
+				}
+			}
+		} catch (SQLException e) {
+			throw new BlockStoreException("db error fetching transactions", e);
+		} catch (IOException e) {
+			throw new BlockStoreException("serialization error converting transactions", e);
+		} catch (ClassNotFoundException e) {
+			throw new BlockStoreException("serialization error converting StoredTransaction", e);
+		}
+	}
+
+
 }

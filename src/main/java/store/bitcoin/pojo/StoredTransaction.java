@@ -51,4 +51,30 @@ public class StoredTransaction implements Serializable{
 		return "StoredTransaction [txid=" + txid + ", blockHash=" + blockHash + ", time=" + time + ", vins=" + vins
 				+ ", vouts=" + vouts + "]";
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((txid == null) ? 0 : txid.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		StoredTransaction other = (StoredTransaction) obj;
+		if (txid == null) {
+			if (other.txid != null)
+				return false;
+		} else if (!txid.equals(other.txid))
+			return false;
+		return true;
+	}
+
 }

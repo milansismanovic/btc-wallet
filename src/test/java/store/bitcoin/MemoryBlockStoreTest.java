@@ -20,6 +20,9 @@ import com._37coins.bcJsonRpc.BitcoindClientFactory;
 import com._37coins.bcJsonRpc.BitcoindInterface;
 
 import store.bitcoin.pojo.StoredBlock;
+import store.bitcoin.pojo.StoredTransaction;
+import store.bitcoin.pojo.StoredVin;
+import store.bitcoin.pojo.StoredVout;
 
 public class MemoryBlockStoreTest {
 	private static final Logger log = LoggerFactory.getLogger(MemoryBlockStoreTest.class);
@@ -28,7 +31,8 @@ public class MemoryBlockStoreTest {
 	private static StoreLoader storeLoader;
 
 	@BeforeClass
-	public static void setUpBeforeClass() throws BlockStoreException, MalformedURLException, IOException, ConfigurationException {
+	public static void setUpBeforeClass()
+			throws BlockStoreException, MalformedURLException, IOException, ConfigurationException {
 		store = new MemoryBlockStore();
 		Configuration config = new Configurations().properties(new File("bitcoin.properties"));
 		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
@@ -44,7 +48,7 @@ public class MemoryBlockStoreTest {
 	@Test
 	public void test() throws Exception {
 		store.resetStore();
-		int n = 6 * 24; // 1 day in the past
+		int n = 6 * 24 * 30; // 30 days in the past
 		log.info("blockCount: {}. Loading {} blocks.", client.getblockcount(), n);
 		storeLoader.loadStore(n);
 		// iterate through the blocks in the store
@@ -58,6 +62,34 @@ public class MemoryBlockStoreTest {
 		log.info("chainhead after update: {}", store.getChainHead());
 		List<String> addresses = new LinkedList<>();
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
-		log.info("txs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", store.getTx(addresses));
+		List<StoredTransaction> txs = store.getTx(addresses);
+		log.info("number of txs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", txs.size());
+		for (StoredTransaction tx : txs) {
+			log.info("tx: {}", tx);
+			if (tx.getVins() != null) {
+				for (StoredVin vin : tx.getVins()) {
+					StoredTransaction parentTx = store.getTx(vin.getInputtxid());
+					if (parentTx == null || parentTx.getVouts() == null)
+						continue;
+					for (StoredVout parentVout : parentTx.getVouts()) {
+						log.info("\tvins:{}", parentVout);
+					}
+				}
+			}
+			if (tx.getVouts() != null) {
+				for (StoredVout vout : tx.getVouts()) {
+					log.info("\tvouts:{}", vout);
+				}
+			}
+		}
+		// check for duplicates
+		for (int i = 0; i < txs.size(); i++) {
+			log.info("tx: {}", txs.get(i));
+			for (int j = i + 1; j < txs.size(); j++) {
+				if(txs.get(i).equals(txs.get(j))){
+					log.info("\tduplicate tx: {}", txs.get(i));
+				}
+			}
+		}
 	}
 }

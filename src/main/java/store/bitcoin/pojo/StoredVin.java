@@ -1,33 +1,57 @@
 package store.bitcoin.pojo;
 
 import java.io.Serializable;
-import java.util.List;
 
 public class StoredVin implements Serializable{
 	private static final long serialVersionUID = -6444408196368573277L;
-	String inputtxid; // coinbase or txid
-	List<StoredVout> parentOuts; // null if coinbase
+	String inputtxid; // null if coinbase or txid
+	int vout; // which input tx's vout has been spent
 
-	public StoredVin(String inputtxid, StoredVout[] parentOuts) {
+	public StoredVin(String inputtxid, int vout) {
 		super();
 		this.inputtxid = inputtxid;
+		this.vout = vout;
 	}
 
 	public String getInputtxid() {
 		return inputtxid;
 	}
 
-	public List<StoredVout> getParentOuts() {
-		return parentOuts;
+	public int getVout() {
+		return vout;
 	}
 
-	public void setParentOuts(List<StoredVout> parentOuts) {
-		this.parentOuts = parentOuts;
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((inputtxid == null) ? 0 : inputtxid.hashCode());
+		result = prime * result + vout;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		StoredVin other = (StoredVin) obj;
+		if (inputtxid == null) {
+			if (other.inputtxid != null)
+				return false;
+		} else if (!inputtxid.equals(other.inputtxid))
+			return false;
+		if (vout != other.vout)
+			return false;
+		return true;
 	}
 
 	@Override
 	public String toString() {
-		return "StoredVin [inputtxid=" + inputtxid + "]";
+		return "StoredVin [inputtxid=" + inputtxid + ", vout=" + vout + "]";
 	}
 
 	// coinbase input

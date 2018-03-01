@@ -33,6 +33,7 @@ import com._37coins.bcJsonRpc.BitcoindInterface;
 import store.bitcoin.BlockStore;
 import store.bitcoin.BlockStoreException;
 import store.bitcoin.DBBlockStore;
+import store.bitcoin.MemoryBlockStore;
 import store.bitcoin.StoreLoader;
 import store.bitcoin.pojo.StoredTransaction;
 
@@ -61,19 +62,25 @@ public class Bitcoin {
 	final static String clientAddresses2[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
 	// FIXME add fresh 3rd key set
 	final static String clientPrivateKeys3[] = { "KySuyZ6jnGbGW2Qc9VpCk7F8z2rqfaS5EfTsqLxycczaZSuPxJwp" };
-	final static String clientPublicKeys3[] = { "021AD207A99E408F840C0911BD8BCDDA9C6089B23AC0CFBB62D76961018E59C282" };
-	final static String clientAddresses3[] = { "1FYU384h3Y7quk1bYy9BZzCFdFA7ojiCfc" };
+	final static String clientPublicKeys3[] = { "02B7EC7437DC90F5F1BE5F963E97B81538AD87C81B4DC1C6E311140F22759D9C46" };
+	final static String clientAddresses3[] = { "n1NBeDoig6XWgSYLs1mgDwh27YccgiDxv9" };
 
 	static BitcoindInterface client;
 	static BlockStore store;
 	static Configuration config;
+	static StoreLoader storeLoader;
 
 	public Bitcoin() throws MalformedURLException, IOException, BlockStoreException, ConfigurationException {
 		config = new Configurations().properties(new File("bitcoin.properties"));
 		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
 				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
-		store = new DBBlockStore();
+		// store = new DBBlockStore();
+		if(store==null)
+			store = new MemoryBlockStore();
+		if(storeLoader==null)
+			storeLoader = new StoreLoader(store, client);
+		storeLoader.loadStore(6 * 24 * 28); // 28 days in the past);
 	}
 
 	String[] getClientprivatekeys1() {
@@ -90,11 +97,12 @@ public class Bitcoin {
 
 	static long lastRefresh = -1;
 
-	// TODO create anonymous inner class to run the sync to update the db
-	// ensure the thread is only spanned once.
-	class DBRefresher {
-
-	}
+	// // TODO implement a clever sync from store to the bitcoin network
+	// // suggestion: create anonymous inner class to run the sync to update the db
+	// // as a singleton to ensure the thread is only spanned once.
+	// class DBRefresher {
+	//
+	// }
 
 	void refreshDB() {
 		if (System.currentTimeMillis() - lastRefresh < 1000 * 30) {
@@ -103,7 +111,7 @@ public class Bitcoin {
 		Thread refreshDBRunnable = new Thread() {
 			public void run() {
 				try {
-					new StoreLoader(store, client).loadStore(1000);
+					storeLoader.loadStore(1000);
 					lastRefresh = System.currentTimeMillis();
 				} catch (BlockStoreException e) {
 					log.error("error refreshing block store", e);

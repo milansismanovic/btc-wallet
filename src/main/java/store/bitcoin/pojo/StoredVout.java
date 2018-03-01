@@ -4,14 +4,27 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
 
-public class StoredVout implements Serializable{
+/**
+ * Stores the vouts for this tx. Note that this class is not inmutable, as it
+ * allows the unspent flag to be changed. This is the only exception for the
+ * Stored??? classes.
+ * 
+ * @author milan
+ *
+ */
+public class StoredVout implements Serializable {
+	// TODO add an id per vout for UTXO handling
 	private static final long serialVersionUID = 4412574968461493796L;
+	String txID;
 	List<String> addresses;
 	BigDecimal value;
+	Boolean unspent;
 
-	public StoredVout(List<String> addresses, BigDecimal value) {
+	public StoredVout(String txId, List<String> addresses, BigDecimal value, Boolean unspent) {
+		this.txID = txId;
 		this.addresses = addresses;
 		this.value = value;
+		this.unspent = unspent;
 	}
 
 	public List<String> getAddresses() {
@@ -22,10 +35,63 @@ public class StoredVout implements Serializable{
 		return value;
 	}
 
+	public Boolean isUnspent() {
+		return unspent;
+	}
+
+	public void setUnspent(Boolean unspent) {
+		this.unspent = unspent;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((addresses == null) ? 0 : addresses.hashCode());
+		result = prime * result + ((txID == null) ? 0 : txID.hashCode());
+		result = prime * result + ((unspent == null) ? 0 : unspent.hashCode());
+		result = prime * result + ((value == null) ? 0 : value.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		StoredVout other = (StoredVout) obj;
+		if (addresses == null) {
+			if (other.addresses != null)
+				return false;
+		} else if (!addresses.equals(other.addresses))
+			return false;
+		if (txID == null) {
+			if (other.txID != null)
+				return false;
+		} else if (!txID.equals(other.txID))
+			return false;
+		if (unspent == null) {
+			if (other.unspent != null)
+				return false;
+		} else if (!unspent.equals(other.unspent))
+			return false;
+		if (value == null) {
+			if (other.value != null)
+				return false;
+		} else if (!value.equals(other.value))
+			return false;
+		return true;
+	}
+
 	@Override
 	public String toString() {
-		return "StoredVout [addresses=" + addresses + ", value=" + value + "]";
+		return "StoredVout [txID=" + txID + ", addresses=" + addresses + ", value=" + value + ", unspent=" + unspent
+				+ "]";
 	}
+
 
 	// std vout
 	// "vout": [

@@ -1,18 +1,35 @@
 package store.bitcoin;
 
+import java.io.Serializable;
 import java.math.BigInteger;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import store.bitcoin.pojo.StoredBlock;
 import store.bitcoin.pojo.StoredTransaction;
 import store.bitcoin.pojo.StoredVout;
 
-public class MemoryBlockStore extends BlockStore {
+/**
+ * Implements {@link BlockStore} into Memory using {@link Collection} classes.
+ * 
+ * @author milan
+ *
+ */
+public class MemoryBlockStore extends BlockStore implements Serializable{
+	private static final Logger log = LoggerFactory.getLogger(MemoryBlockStore.class);
+
 	Map<String, StoredBlock> blockMap = new HashMap<String, StoredBlock>();
-	Map<String, List<StoredTransaction>> addressTransactions = new HashMap<String, List<StoredTransaction>>();
+	Map<String, StoredTransaction> txMap = new HashMap<String, StoredTransaction>();
+	Map<String, Set<StoredTransaction>> addressTransactions = new HashMap<String, Set<StoredTransaction>>();
+	Map<String, List<StoredVout>> addressVouts = new HashMap<String, List<StoredVout>>();
 
 	@Override
 	public StoredBlock get(String hash) throws BlockStoreException {
@@ -23,51 +40,183 @@ public class MemoryBlockStore extends BlockStore {
 	public void put(StoredBlock block) throws BlockStoreException {
 		blockMap.put(block.getHash(), block);
 		for (StoredTransaction tx : block.getTxs()) {
+			txMap.put(tx.getTxid(), tx);
+			// Map<String,StoredVout> addressTxVouts = new HashMap<>();
 			for (StoredVout vout : tx.getVouts()) {
 				List<String> addresses = vout.getAddresses();
 				if (addresses == null)
 					continue;
+				// store the addressTransactions from the vouts
 				for (String address : vout.getAddresses()) {
-					List<StoredTransaction> thisaddressTransactions = addressTransactions.get(address);
-					if (thisaddressTransactions == null) {
-						thisaddressTransactions = new LinkedList<StoredTransaction>();
-						addressTransactions.put(address, thisaddressTransactions);
+					// ensures addressTransactions.get(address) will not be null
+					addAddressTransactions(address, tx);
+					// store the addressVouts from the vouts
+					if (addressVouts.get(address) == null) {
+						addressVouts.put(address, new LinkedList<StoredVout>());
 					}
-					thisaddressTransactions.add(tx);
+					addressVouts.get(address).add(vout);
 				}
 			}
 		}
+		// we can't do the following code, as we will probably not find the past block,
+		// because it is not yet put into the store. So the loader needs to make a
+		// second pass
+		// and update the vins through the updateUTXO call.
+
+		// // store the addressOutputs from the vins into vin address set
+		// Set<String> parentOutAddresses = new HashSet<>();
+		// for (StoredVin vin : tx.getVins()) {
+		// String parentTxid = vin.getInputtxid();
+		// StoredTransaction parentTx = getTx(parentTxid);
+		// if (parentTx == null)
+		// continue; // this can only happen, if we don't have the previous hashes...
+		// for (StoredVout parentVout : parentTx.getVouts()) {
+		// List<String> parentAddresses = parentVout.getAddresses();
+		// if (parentAddresses == null) {
+		// continue;
+		// } else {
+		// for(String parentAddress:parentAddresses) {
+		// if(addressTxVouts.containsKey(parentAddress)) {
+		// // found spend out for this tx
+		// parentVout.setUnspent(true);
+		// }
+		// }
+		// parentOutAddresses.addAll(parentVout.getAddresses());
+		// }
+		// }
+		// }
 		updateChainHead(block);
+	}
+
+	StoredTransaction doubleTx;
+
+	/**
+	 * Add a transaction to the addressTransaction map. If there is no entry for
+	 * this address, create one.
+	 * 
+	 * @param address
+	 * @param tx
+	 */
+	void addAddressTransactions(String address, StoredTransaction tx) {
+		Set<StoredTransaction> thisaddressTransactions = addressTransactions.get(address);
+		if (thisaddressTransactions == null) {
+			thisaddressTransactions = new HashSet<StoredTransaction>();
+			addressTransactions.put(address, thisaddressTransactions);
+		}
+		// FIXME check what is wrong with tx
+		// "538185dd71bbbab9e2f8fb9da0c89c77f065393d92482629b4af940cb2bcc09a"
+		// it is added twice to the addressTransaction set. Thus this funny code below.
+		// otherwise only
+		// thisaddressTransactions.add(tx); would be needed.
+		final String debugStopAddress = "538185dd71bbbab9e2f8fb9da0c89c77f065393d92482629b4af940cb2bcc09a";
+		if (tx.getTxid().equals(debugStopAddress)) {
+			log.info("debugTx: set():{}", thisaddressTransactions);
+			if (thisaddressTransactions.contains(tx))
+				log.info("already there");
+			if (doubleTx != null) {
+				for (StoredTransaction stx : thisaddressTransactions) {
+					if (stx.getTxid().equals(debugStopAddress)) {
+						log.info("stx hashcodes {}", stx.hashCode());
+						log.info("tx hashcodes {}", tx.hashCode());
+						if (tx.equals(stx)) {
+							// evidence 1 of erroneous set behavior: contains returns false even though we are iterating through
+							// the set's content.
+							log.info("set.contains(tx):{}", thisaddressTransactions.contains(tx));
+							// evidence 2: the hashcode and equals show stx and tx are the same
+							log.info("tx.equals(stx): {}", tx.equals(stx));
+							log.info("stx.hashCode()=tx.hashCode(): {} ", (stx.hashCode() == tx.hashCode()));
+							log.info("set size:{} ", thisaddressTransactions.size());
+							thisaddressTransactions.add(tx);
+							log.info("set size:{}", thisaddressTransactions.size());
+						} else {
+							log.info("different");
+						}
+						break;
+					}
+				}
+			}
+		}
+		thisaddressTransactions.add(tx);
+		if (tx.getTxid().equals(debugStopAddress)) {
+			doubleTx = tx;
+			StoredTransaction stx = getTx(debugStopAddress);
+			if (tx.equals(stx))
+				log.info("same");
+			// weird this set contains duplicate transactions which must not happen
+			log.info("debugTx: set(): {}", thisaddressTransactions);
+		}
 	}
 
 	@Override
 	public List<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
 		List<StoredTransaction> stxs = new LinkedList<>();
 		for (String address : addresses) {
-			List<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
+			Set<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
 			if (thisaddressTxs != null) {
 				stxs.addAll(thisaddressTxs);
 			}
 		}
 		return stxs;
+//		TreeSet<StoredTransaction> stxs = new TreeSet<>();
+//		for (String address : addresses) {
+//			Set<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
+//			if (thisaddressTxs != null) {
+//				stxs.addAll(thisaddressTxs);
+//			}
+//		}
+//		return stxs;
 	}
 
 	@Override
-	public List<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
-		return null;
+	public StoredTransaction getTx(String inputTxid) {
+		return txMap.get(inputTxid);
 	}
 
 	@Override
-	public BigInteger getBalance(List<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
+	public StoredBlock get(int height) throws BlockStoreException {
+		for (StoredBlock block : blockMap.values()) {
+			if (block.getHeight() == height) {
+				return block;
+			}
+		}
 		return null;
+	}
+
+	/**
+	 * Does two things: 1. Updates all vouts unspent of this <code>parentTx</code>
+	 * to false. 2. Adds this <code>parentTx</code> to the
+	 * <code>addressTransactions</code> map for the parentTx.vout.addresses.
+	 */
+	@Override
+	public void updateUTXO(StoredTransaction tx, StoredTransaction parentTx, int parentVoutIndex)
+			throws BlockStoreException {
+		StoredVout parentVout = parentTx.getVouts().get(parentVoutIndex);
+		parentVout.setUnspent(false);
+		List<String> addresses = parentVout.getAddresses();
+		if (addresses != null) {
+			for (String voutAdress : addresses) {
+				addAddressTransactions(voutAdress, tx);
+			}
+		}
 	}
 
 	@Override
 	public void resetStore() throws BlockStoreException {
 		blockMap.clear();
 		addressTransactions.clear();
+		txMap.clear();
+		addressVouts.clear();
 	}
 
+	@Override
+	public List<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
+		// TODO Auto-generated method stub
+		throw new RuntimeException("not yet implemented");
+	}
+
+	@Override
+	public BigInteger getBalance(List<String> addresses) throws BlockStoreException {
+		// TODO Auto-generated method stub
+		throw new RuntimeException("not yet implemented");
+	}
 }

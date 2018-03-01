@@ -18,6 +18,7 @@ public abstract class BlockStore {
 
 	/**
 	 * update chainhead if block newer than current chainhead
+	 * 
 	 * @param block
 	 * @throws BlockStoreException
 	 */
@@ -29,6 +30,7 @@ public abstract class BlockStore {
 
 	/**
 	 * gets the chain head height or -1 if the chain head is null
+	 * 
 	 * @return
 	 * @throws BlockStoreException
 	 */
@@ -39,6 +41,8 @@ public abstract class BlockStore {
 
 	public abstract StoredBlock get(String hash) throws BlockStoreException;
 
+	public abstract StoredBlock get(int height) throws BlockStoreException;
+
 	public abstract void put(StoredBlock block) throws BlockStoreException;
 
 	public abstract List<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException;
@@ -48,4 +52,16 @@ public abstract class BlockStore {
 	public abstract BigInteger getBalance(List<String> addresses) throws BlockStoreException;
 
 	public abstract void resetStore() throws BlockStoreException;
+
+	/**
+	 * Set the vout to spend for all given addresses.
+	 * @param tx
+	 * @param parentTx 
+	 * @param addresses
+	 * @throws BlockStoreException
+	 */
+	public abstract void updateUTXO(StoredTransaction tx, StoredTransaction parentTx, int parentVoutIndex)
+			throws BlockStoreException;
+
+	public abstract StoredTransaction getTx(String inputTxid);
 }
