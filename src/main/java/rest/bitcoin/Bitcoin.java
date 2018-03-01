@@ -11,6 +11,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 
 import javax.servlet.Servlet;
 import javax.ws.rs.GET;
@@ -133,13 +134,13 @@ public class Bitcoin {
 	@GET
 	@Path("getTransactions")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
-	public List<StoredTransaction> getTransactions() throws BlockStoreException {
+	public SortedSet<StoredTransaction> getTransactions() throws BlockStoreException {
 		refreshDB();
 		String clientAddresses[] = getClientaddresses1();
 		Set<String> addresses = new HashSet<String>();
 		addresses.addAll(Arrays.asList(clientAddresses));
 		log.info("getting stored txs");
-		List<StoredTransaction> stxs = store.getTx(Arrays.asList(clientAddresses));
+		SortedSet<StoredTransaction> stxs = store.getTx(Arrays.asList(clientAddresses));
 		log.info("user's stored tx({}): {}", stxs.size(), stxs.toString());
 		return stxs;
 	}

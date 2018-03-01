@@ -9,7 +9,7 @@ import java.util.List;
  * @author milan
  *
  */
-public class StoredTransaction implements Serializable{
+public class StoredTransaction implements Serializable, Comparable<StoredTransaction>{
 	private static final long serialVersionUID = -7228504376094471841L;
 	String txid;
 	String blockHash;
@@ -75,6 +75,14 @@ public class StoredTransaction implements Serializable{
 		} else if (!txid.equals(other.txid))
 			return false;
 		return true;
+	}
+
+	@Override
+	public int compareTo(StoredTransaction o) {
+		if(this.equals(o))
+			return 0;
+		else
+			return this.time>o.time?-1:1;
 	}
 
 }

@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.SortedSet;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
@@ -62,7 +63,7 @@ public class MemoryBlockStoreTest {
 		log.info("chainhead after update: {}", store.getChainHead());
 		List<String> addresses = new LinkedList<>();
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
-		List<StoredTransaction> txs = store.getTx(addresses);
+		SortedSet<StoredTransaction> txs = store.getTx(addresses);
 		log.info("number of txs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", txs.size());
 		for (StoredTransaction tx : txs) {
 			log.info("tx: {}", tx);
@@ -79,15 +80,6 @@ public class MemoryBlockStoreTest {
 			if (tx.getVouts() != null) {
 				for (StoredVout vout : tx.getVouts()) {
 					log.info("\tvouts:{}", vout);
-				}
-			}
-		}
-		// check for duplicates
-		for (int i = 0; i < txs.size(); i++) {
-			log.info("tx: {}", txs.get(i));
-			for (int j = i + 1; j < txs.size(); j++) {
-				if(txs.get(i).equals(txs.get(j))){
-					log.info("\tduplicate tx: {}", txs.get(i));
 				}
 			}
 		}

@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.SortedSet;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
@@ -62,7 +63,7 @@ public class DBBlockStoreTest {
 		// get tx from known address of a user
 		List<String> addresses = new LinkedList<String>();
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
-		List<StoredTransaction> txs = store.getTx(addresses);
+		SortedSet<StoredTransaction> txs = store.getTx(addresses);
 		for (StoredTransaction tx : txs) {
 			log.info(tx.toString());
 		}
@@ -72,7 +73,7 @@ public class DBBlockStoreTest {
 	public void testTransactions() throws BlockStoreException {
 		List<String> addresses = new LinkedList<String>();
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
-		List<StoredTransaction> txs = store.getTx(addresses);
+		SortedSet<StoredTransaction> txs = store.getTx(addresses);
 		log.info("tx for address: {}, count={}, tx={}", "mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH", txs.size(),
 				txs.toString());
 

@@ -18,6 +18,8 @@ import java.sql.Timestamp;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Properties;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
@@ -355,8 +357,8 @@ public class DBBlockStore extends BlockStore {
 		return tx;
 	}
 
-	public List<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
-		List<StoredTransaction> txs = new LinkedList<>();
+	public SortedSet<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
+		SortedSet<StoredTransaction> txs = new TreeSet<>();
 		// FIXME there is probably a more elegant way to have a multi value where
 		// clause than to manually construct the sql select statement...
 		StringBuffer sql = new StringBuffer();
@@ -407,7 +409,7 @@ public class DBBlockStore extends BlockStore {
 		return txs;
 	}
 
-	public List<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -426,7 +428,7 @@ public class DBBlockStore extends BlockStore {
 	public void test(List<String> addresses) throws BlockStoreException {
 		try {
 			// get all tx for this address
-			List<StoredTransaction> txs = getTx(addresses);
+			SortedSet<StoredTransaction> txs = getTx(addresses);
 			for (StoredTransaction tx : txs) {
 				log.info(tx.toString());
 				// get

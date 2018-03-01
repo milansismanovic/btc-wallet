@@ -9,6 +9,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,12 +25,12 @@ import store.bitcoin.pojo.StoredVout;
  * @author milan
  *
  */
-public class MemoryBlockStore extends BlockStore implements Serializable{
+public class MemoryBlockStore extends BlockStore{
 	private static final Logger log = LoggerFactory.getLogger(MemoryBlockStore.class);
 
 	Map<String, StoredBlock> blockMap = new HashMap<String, StoredBlock>();
 	Map<String, StoredTransaction> txMap = new HashMap<String, StoredTransaction>();
-	Map<String, Set<StoredTransaction>> addressTransactions = new HashMap<String, Set<StoredTransaction>>();
+	Map<String, SortedSet<StoredTransaction>> addressTransactions = new HashMap<String, SortedSet<StoredTransaction>>();
 	Map<String, List<StoredVout>> addressVouts = new HashMap<String, List<StoredVout>>();
 
 	@Override
@@ -58,33 +60,6 @@ public class MemoryBlockStore extends BlockStore implements Serializable{
 				}
 			}
 		}
-		// we can't do the following code, as we will probably not find the past block,
-		// because it is not yet put into the store. So the loader needs to make a
-		// second pass
-		// and update the vins through the updateUTXO call.
-
-		// // store the addressOutputs from the vins into vin address set
-		// Set<String> parentOutAddresses = new HashSet<>();
-		// for (StoredVin vin : tx.getVins()) {
-		// String parentTxid = vin.getInputtxid();
-		// StoredTransaction parentTx = getTx(parentTxid);
-		// if (parentTx == null)
-		// continue; // this can only happen, if we don't have the previous hashes...
-		// for (StoredVout parentVout : parentTx.getVouts()) {
-		// List<String> parentAddresses = parentVout.getAddresses();
-		// if (parentAddresses == null) {
-		// continue;
-		// } else {
-		// for(String parentAddress:parentAddresses) {
-		// if(addressTxVouts.containsKey(parentAddress)) {
-		// // found spend out for this tx
-		// parentVout.setUnspent(true);
-		// }
-		// }
-		// parentOutAddresses.addAll(parentVout.getAddresses());
-		// }
-		// }
-		// }
 		updateChainHead(block);
 	}
 
@@ -98,9 +73,9 @@ public class MemoryBlockStore extends BlockStore implements Serializable{
 	 * @param tx
 	 */
 	void addAddressTransactions(String address, StoredTransaction tx) {
-		Set<StoredTransaction> thisaddressTransactions = addressTransactions.get(address);
+		SortedSet<StoredTransaction> thisaddressTransactions = addressTransactions.get(address);
 		if (thisaddressTransactions == null) {
-			thisaddressTransactions = new HashSet<StoredTransaction>();
+			thisaddressTransactions = new TreeSet<StoredTransaction>();
 			addressTransactions.put(address, thisaddressTransactions);
 		}
 		// FIXME check what is wrong with tx
@@ -148,8 +123,8 @@ public class MemoryBlockStore extends BlockStore implements Serializable{
 	}
 
 	@Override
-	public List<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
-		List<StoredTransaction> stxs = new LinkedList<>();
+	public SortedSet<StoredTransaction> getTx(List<String> addresses) throws BlockStoreException {
+		SortedSet<StoredTransaction> stxs = new TreeSet<>();
 		for (String address : addresses) {
 			Set<StoredTransaction> thisaddressTxs = addressTransactions.get(address);
 			if (thisaddressTxs != null) {
@@ -209,7 +184,7 @@ public class MemoryBlockStore extends BlockStore implements Serializable{
 	}
 
 	@Override
-	public List<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
+	public SortedSet<StoredTransaction> getUnspentTx(List<String> addresses) throws BlockStoreException {
 		// TODO Auto-generated method stub
 		throw new RuntimeException("not yet implemented");
 	}
