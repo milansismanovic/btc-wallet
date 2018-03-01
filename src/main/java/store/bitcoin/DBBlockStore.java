@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -421,16 +420,6 @@ public class DBBlockStore extends BlockStore {
 		return txs;
 	}
 
-	public SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	public BigInteger getBalance(List<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	@Override
 	public void updateUTXO(StoredTransaction tx, StoredTransaction parentTx, int parentVoutIndex)
 			throws BlockStoreException {
@@ -462,6 +451,12 @@ public class DBBlockStore extends BlockStore {
 		} catch (ClassNotFoundException e) {
 			throw new BlockStoreException("serialization error converting StoredTransaction", e);
 		}
+	}
+
+	@Override
+	public SortedSet<StoredVout> getUnspentVouts(Collection<String> addresses) throws BlockStoreException {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

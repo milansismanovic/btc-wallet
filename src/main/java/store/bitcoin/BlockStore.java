@@ -1,12 +1,12 @@
 package store.bitcoin;
 
-import java.math.BigInteger;
+import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.List;
 import java.util.SortedSet;
 
 import store.bitcoin.pojo.StoredBlock;
 import store.bitcoin.pojo.StoredTransaction;
+import store.bitcoin.pojo.StoredVout;
 
 public abstract class BlockStore {
 	StoredBlock chainHeadBlock;
@@ -41,6 +41,15 @@ public abstract class BlockStore {
 		return chainHeadHeigth;
 	}
 
+	public BigDecimal getBalance(Collection<String> addresses) throws BlockStoreException{
+		SortedSet<StoredVout> utxos = getUnspentVouts(addresses);
+		BigDecimal balance = new BigDecimal(0);
+		for (StoredVout vout : utxos) {
+			balance = balance.add(vout.getAmount());
+		}
+		return balance;
+	}
+
 	public abstract StoredBlock get(String hash) throws BlockStoreException;
 
 	public abstract StoredBlock get(int height) throws BlockStoreException;
@@ -49,9 +58,7 @@ public abstract class BlockStore {
 
 	public abstract SortedSet<StoredTransaction> getTx(Collection<String> addresses) throws BlockStoreException;
 
-	public abstract SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException;
-
-	public abstract BigInteger getBalance(List<String> addresses) throws BlockStoreException;
+	public abstract SortedSet<StoredVout> getUnspentVouts(Collection<String> addresses) throws BlockStoreException;
 
 	public abstract void resetStore() throws BlockStoreException;
 

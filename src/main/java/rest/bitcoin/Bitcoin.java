@@ -35,7 +35,6 @@ import store.bitcoin.BlockStoreException;
 import store.bitcoin.MemoryBlockStore;
 import store.bitcoin.StoreLoader;
 import store.bitcoin.pojo.StoredTransaction;
-import store.bitcoin.pojo.StoredVout;
 
 /**
  * This component that exposes all the services with regard to Bitcoin
@@ -147,23 +146,13 @@ public class Bitcoin {
 	 * Gets the user balance.
 	 * 
 	 * @return
-	 * @throws BlockStoreException 
+	 * @throws BlockStoreException
 	 */
 	@GET
 	@Path("getBalance")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
 	public BigDecimal getBalance() throws BlockStoreException {
-		// TODO get the balance for these addresses and put them in a List of
-		// BitcoinJ transactions using ConsensusJ
-		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
-		BigDecimal balance = new BigDecimal(0);
-		for(StoredTransaction utxo:utxos) {
-			for(StoredVout vout:utxo.getVouts()) {
-				if(vout.isUnspent()) {
-					balance = balance.add(vout.getAmount());
-				}
-			}
-		}
+		BigDecimal balance = store.getBalance(getClientaddresses1());
 		return balance;
 	}
 
@@ -181,7 +170,7 @@ public class Bitcoin {
 		// TODO requires the usage of the 3 public keys and creates a 2 out of 3
 		// multisig address
 		// one public key is from the client. The rest from the backend.
-		return "32gaYRAvxFgsBZB3LuegK4W4wbx8rNdNX9";
+		return "mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH";
 	}
 
 	/**

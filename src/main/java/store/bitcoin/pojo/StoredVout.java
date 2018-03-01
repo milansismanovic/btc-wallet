@@ -12,7 +12,7 @@ import java.util.List;
  * @author milan
  *
  */
-public class StoredVout implements Serializable {
+public class StoredVout implements Serializable, Comparable<StoredVout> {
 	// TODO add an id per vout for UTXO handling
 	private static final long serialVersionUID = 4412574968461493796L;
 	String txID;
@@ -90,6 +90,15 @@ public class StoredVout implements Serializable {
 	public String toString() {
 		return "StoredVout [txID=" + txID + ", addresses=" + addresses + ", value=" + value + ", unspent=" + unspent
 				+ "]";
+	}
+
+	@Override
+	public int compareTo(StoredVout o) {
+		if(this.equals(o))
+			return 0;
+		if(this.unspent & !o.unspent)
+			return 1;
+		return this.value.compareTo(o.value);
 	}
 
 
