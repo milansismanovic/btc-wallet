@@ -22,7 +22,13 @@ import javax.ws.rs.core.MediaType;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.Coin;
+import org.bitcoinj.core.DumpedPrivateKey;
+import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.NetworkParameters;
 import org.bitcoinj.core.Transaction;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -69,26 +75,42 @@ public class Bitcoin {
 	static BlockStore store;
 	static Configuration config;
 	static StoreLoader storeLoader;
+	static NetworkParameters params;
 
 	public Bitcoin() throws MalformedURLException, IOException, BlockStoreException, ConfigurationException {
-		config = new Configurations().properties(new File("bitcoin.properties"));
+		if (config == null)
+			config = new Configurations().properties(new File("bitcoin.properties"));
 		BitcoindClientFactory clientFactory = new BitcoindClientFactory(new URL(config.getString("bitcoin.rpc.URL")),
 				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
-		client = clientFactory.getClient();
+		if (client == null)
+			client = clientFactory.getClient();
 		// store = new DBBlockStore();
 		if (store == null)
 			store = new MemoryBlockStore();
 		if (storeLoader == null)
 			storeLoader = new StoreLoader(store, client);
-		storeLoader.loadStore(6 * 24 * 20); // 28 days in the past);
+		storeLoader.loadStore(6 * 24 * 20); // 28 days in the past
+
+		if (params == null) {
+			// params = config.getBoolean("bitcoin.testnet") ? TestNet3Params.get() :
+			// MainNetParams.get();
+			if (config.getBoolean("bitcoin.testnet"))
+				params = TestNet3Params.get();
+			else
+				params = MainNetParams.get();
+		}
 	}
 
-	String[] getClientprivatekeys1() {
-		return clientPrivateKeys1;
+	Collection<String> getClientprivatekeys1() {
+		Collection<String> privateKeys = new LinkedList<>();
+		privateKeys.addAll(Arrays.asList(clientPrivateKeys1));
+		return privateKeys;
 	}
 
-	String[] getClientpublickeys1() {
-		return clientPublicKeys1;
+	Collection<String> getClientpublickeys1() {
+		Collection<String> publicKeys = new LinkedList<>();
+		publicKeys.addAll(Arrays.asList(clientPublicKeys1));
+		return publicKeys;
 	}
 
 	Collection<String> getClientaddresses1() {
@@ -147,7 +169,7 @@ public class Bitcoin {
 	 * Gets the user balance.
 	 * 
 	 * @return
-	 * @throws BlockStoreException 
+	 * @throws BlockStoreException
 	 */
 	@GET
 	@Path("getBalance")
@@ -157,9 +179,9 @@ public class Bitcoin {
 		// BitcoinJ transactions using ConsensusJ
 		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
 		BigDecimal balance = new BigDecimal(0);
-		for(StoredTransaction utxo:utxos) {
-			for(StoredVout vout:utxo.getVouts()) {
-				if(vout.isUnspent()) {
+		for (StoredTransaction utxo : utxos) {
+			for (StoredVout vout : utxo.getVouts()) {
+				if (vout.isUnspent()) {
 					balance = balance.add(vout.getAmount());
 				}
 			}
@@ -191,13 +213,54 @@ public class Bitcoin {
 	 * @param satoshiAmount
 	 * @param changeAddress
 	 * @return array of UTXOs to sign
+	 * @throws BlockStoreException
 	 */
 	@GET
 	@Path("startTransaction")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
 	public List<Transaction> startTransaction(@QueryParam("toAddress") String toAddress,
-			@QueryParam("satoshiAmount") int satoshiAmount, @QueryParam("changeAddress") String changeAddress) {
+			@QueryParam("satoshiAmount") int satoshiAmount, @QueryParam("changeAddress") String changeAddress)
+			throws BlockStoreException {
 		// TODO create new list of transactions to be signed with key 1
+		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
+		// create the tx
+		// create the inputs
+		// create the outputs
+
+		// String to a private key
+		String privKey = getClientprivatekeys1().iterator().next(); // get the first key as all money is with it
+		String address = getClientaddresses1().iterator().next(); // get the first address
+
+		DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params, privKey);
+		ECKey key = dumpedPrivateKey.getKey();
+
+		// String to an address
+		Address address2 = Address.fromBase58(params, address);
+
+		Transaction tx = new Transaction(params);
+		int amount = 14013;
+		// value is a sum of all inputs, fee is 4013
+		tx.addOutput(Coin.valueOf(amount - 4013), address2);
+
+//		UTXO utxo;
+//		for(vout:store.get)
+		
+		// //utxos is an array of inputs from my wallet
+		// for(UTXO utxo : utxos)
+		// {
+		// TransactionOutPoint outPoint = new TransactionOutPoint(params,
+		// utxo.getIndex(), utxo.getHash());
+		// //YOU HAVE TO CHANGE THIS
+		// tx.addSignedInput(outPoint, utxo.getScript(), key, Transaction.SigHash.ALL,
+		// true);
+		// }
+		//
+		// tx.getConfidence().setSource(TransactionConfidence.Source.SELF);
+		// tx.setPurpose(Transaction.Purpose.USER_PAYMENT);
+		//
+		// System.out.println(tx.getHashAsString());
+		// b_peerGroup.GetPeerGroup().broadcastTransaction(tx);
+
 		List<Transaction> txs = new LinkedList<>();
 		txs.add(new Transaction(TestNet3Params.get()));
 		txs.add(new Transaction(TestNet3Params.get()));
