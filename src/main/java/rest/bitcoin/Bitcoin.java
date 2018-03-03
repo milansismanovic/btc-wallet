@@ -175,17 +175,7 @@ public class Bitcoin {
 	@Path("getBalance")
 	@Produces({ MediaType.TEXT_PLAIN, MediaType.APPLICATION_JSON })
 	public BigDecimal getBalance() throws BlockStoreException {
-		// TODO get the balance for these addresses and put them in a List of
-		// BitcoinJ transactions using ConsensusJ
-		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
-		BigDecimal balance = new BigDecimal(0);
-		for (StoredTransaction utxo : utxos) {
-			for (StoredVout vout : utxo.getVouts()) {
-				if (vout.isUnspent()) {
-					balance = balance.add(vout.getAmount());
-				}
-			}
-		}
+		BigDecimal balance = store.getBalance(getClientaddresses1());
 		return balance;
 	}
 
