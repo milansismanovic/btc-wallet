@@ -124,6 +124,7 @@ public class Bitcoin {
 	// // TODO implement a clever sync from store to the bitcoin network
 	// // suggestion: create anonymous inner class to run the sync to update the db
 	// // as a singleton to ensure the thread is only spanned once.
+	// // i.e. use BlockListener from the BitcoindClient4J
 	// class DBRefresher {
 	//
 	// }
@@ -212,7 +213,7 @@ public class Bitcoin {
 			@QueryParam("satoshiAmount") int satoshiAmount, @QueryParam("changeAddress") String changeAddress)
 			throws BlockStoreException {
 		// TODO create new list of transactions to be signed with key 1
-		SortedSet<StoredTransaction> utxos = store.getUnspentTx(getClientaddresses1());
+		SortedSet<StoredVout> utxos = store.getUnspentVouts(getClientaddresses1());
 		// create the tx
 		// create the inputs
 		// create the outputs

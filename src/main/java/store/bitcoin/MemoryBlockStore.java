@@ -1,6 +1,5 @@
 package store.bitcoin;
 
-import java.math.BigInteger;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -23,7 +22,7 @@ import store.bitcoin.pojo.StoredVout;
  * @author milan
  *
  */
-public class MemoryBlockStore extends BlockStore{
+public class MemoryBlockStore extends BlockStore {
 	private static final Logger log = LoggerFactory.getLogger(MemoryBlockStore.class);
 
 	Map<String, StoredBlock> blockMap = new HashMap<String, StoredBlock>();
@@ -92,7 +91,8 @@ public class MemoryBlockStore extends BlockStore{
 						log.info("stx hashcodes {}", stx.hashCode());
 						log.info("tx hashcodes {}", tx.hashCode());
 						if (tx.equals(stx)) {
-							// evidence 1 of erroneous set behavior: contains returns false even though we are iterating through
+							// evidence 1 of erroneous set behavior: contains returns false even though we
+							// are iterating through
 							// the set's content.
 							log.info("set.contains(tx):{}", thisaddressTransactions.contains(tx));
 							// evidence 2: the hashcode and equals show stx and tx are the same
@@ -174,25 +174,19 @@ public class MemoryBlockStore extends BlockStore{
 	}
 
 	@Override
-	public SortedSet<StoredTransaction> getUnspentTx(Collection<String> addresses) throws BlockStoreException {
-		SortedSet<StoredTransaction> utxos = new TreeSet<>();
+	public SortedSet<StoredVout> getUnspentVouts(Collection<String> addresses) throws BlockStoreException {
 		SortedSet<StoredTransaction> allTx = getTx(addresses);
-		for(StoredTransaction tx:allTx) {
-			if(tx.getVouts()!=null) {
-				for(StoredVout vout:tx.getVouts()) {
-					if(vout.isUnspent()) {
-						utxos.add(tx);
+		SortedSet<StoredVout> utxos = new TreeSet<>();
+		for (StoredTransaction tx : allTx) {
+			if (tx.getVouts() != null) {
+				for (StoredVout vout : tx.getVouts()) {
+					if (vout.isUnspent()) {
+						utxos.add(vout);
 						continue;
 					}
 				}
 			}
 		}
 		return utxos;
-	}
-
-	@Override
-	public BigInteger getBalance(List<String> addresses) throws BlockStoreException {
-		// TODO Auto-generated method stub
-		throw new RuntimeException("not yet implemented");
 	}
 }

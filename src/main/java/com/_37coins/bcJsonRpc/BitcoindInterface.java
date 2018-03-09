@@ -1,6 +1,7 @@
 package com._37coins.bcJsonRpc;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +13,8 @@ import com._37coins.bcJsonRpc.pojo.BlockVerbose;
 import com._37coins.bcJsonRpc.pojo.Info;
 import com._37coins.bcJsonRpc.pojo.LastBlock;
 import com._37coins.bcJsonRpc.pojo.RawTransaction;
+import com._37coins.bcJsonRpc.pojo.RawTxInput;
+import com._37coins.bcJsonRpc.pojo.RawTxOutput;
 import com._37coins.bcJsonRpc.pojo.Transaction;
 
 
@@ -43,7 +46,6 @@ public interface BitcoindInterface {
 	public BigDecimal getbalance();
 	//If [account] is specified, returns the balance in the account.
 	public BigDecimal getbalance(String account);
-	//
 	public BigDecimal getbalance(String account, int minimumConfirmations);
 	//Returns information about the block with the given hash.
 	public Block getblock(String blockHash);
@@ -63,6 +65,12 @@ public interface BitcoindInterface {
 	public long gethashespersec();
 	//Returns an object about the given transaction hash.
 	public Transaction gettransaction(String hash);
+
+	//creates a raw transaction and returns its byte representations
+	public String createrawtransaction(Collection<RawTxInput> rawTxInput, RawTxOutput rawTxOutput);
+	//creates a raw transaction and returns its byte representations
+	public String sendrawtransaction(String rawTransaction);
+	
 	//Returns an object about the given transaction hash.
 	public String getrawtransaction(String hash);
 	//Returns an object about the given transaction hash.

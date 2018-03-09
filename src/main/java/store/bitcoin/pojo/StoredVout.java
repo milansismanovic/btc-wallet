@@ -12,16 +12,19 @@ import java.util.List;
  * @author milan
  *
  */
-public class StoredVout implements Serializable {
+public class StoredVout implements Serializable, Comparable<StoredVout> {
 	// TODO add an id per vout for UTXO handling
 	private static final long serialVersionUID = 4412574968461493796L;
 	String txID;
+	int index;
 	List<String> addresses;
 	BigDecimal value;
 	Boolean unspent;
 
-	public StoredVout(String txId, List<String> addresses, BigDecimal value, Boolean unspent) {
-		this.txID = txId;
+	public StoredVout(String txID, int index, List<String> addresses, BigDecimal value, Boolean unspent) {
+		super();
+		this.txID = txID;
+		this.index = index;
 		this.addresses = addresses;
 		this.value = value;
 		this.unspent = unspent;
@@ -41,6 +44,26 @@ public class StoredVout implements Serializable {
 
 	public void setUnspent(Boolean unspent) {
 		this.unspent = unspent;
+	}
+
+	public String getTxID() {
+		return txID;
+	}
+
+	public BigDecimal getValue() {
+		return value;
+	}
+
+	public Boolean getUnspent() {
+		return unspent;
+	}
+
+	public int getIndex() {
+		return index;
+	}
+
+	public static long getSerialversionuid() {
+		return serialVersionUID;
 	}
 
 	@Override
@@ -90,6 +113,15 @@ public class StoredVout implements Serializable {
 	public String toString() {
 		return "StoredVout [txID=" + txID + ", addresses=" + addresses + ", value=" + value + ", unspent=" + unspent
 				+ "]";
+	}
+
+	@Override
+	public int compareTo(StoredVout o) {
+		if(this.equals(o))
+			return 0;
+		if(this.unspent & !o.unspent)
+			return 1;
+		return this.value.compareTo(o.value);
 	}
 
 

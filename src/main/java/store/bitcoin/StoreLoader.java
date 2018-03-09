@@ -132,11 +132,12 @@ public class StoreLoader {
 			}
 			// get all vouts into svouts
 			List<StoredVout> svouts = new LinkedList<>();
+			int index = 0;
 			for (Vout vout : tx.getVout()) {
 				List<String> addressList = vout.getScriptPubKey().getAddresses();
 				// the check if the tx has been spent must be done in a second run
 				// therefore we set its unspent value to null meaning unknown
-				StoredVout svout = new StoredVout(tx.getTxid(), addressList, vout.getValue(), null);
+				StoredVout svout = new StoredVout(tx.getTxid(), index++, addressList, vout.getValue(), null);
 				svouts.add(svout);
 			}
 			// create tx and add it to the list
