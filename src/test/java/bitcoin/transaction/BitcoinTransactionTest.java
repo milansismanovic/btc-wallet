@@ -96,6 +96,12 @@ public class BitcoinTransactionTest {
 
 	@Test
 	public void testMultiSigTransaction() throws BlockStoreException {
+		// take pbk1, 2, 3
+		// create multisigaddress
+		// get utxos
+		// create rawtx
+		// sign utxos with prk1 and prk2 and add to the rawtx
+		// send rawtx
 		fail("not yet implemented");
 	}
 
@@ -145,6 +151,7 @@ public class BitcoinTransactionTest {
 			boolean coinbase = false;
 			String rtxString = client.getrawtransaction(sutxo.getTxID());
 			Transaction inputTx;
+			// TODO migrate to latest segwit branch or main if already migrated there, so the conversion always works
 			try {
 				inputTx = new Transaction(params, Utils.HEX.decode(rtxString));
 			} catch (Exception e) {

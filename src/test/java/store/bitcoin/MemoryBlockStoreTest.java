@@ -66,12 +66,12 @@ public class MemoryBlockStoreTest {
 		addresses.add("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH");
 		SortedSet<StoredTransaction> txs = store.getTx(addresses);
 		log.info("number of txs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", txs.size());
-		writeTransactions(txs);
+		printTransactions(txs);
 		log.info("number of utxs with adr: 'mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH' {}", store.getUnspentVouts(addresses).size());
 		log.info(store.getUnspentVouts(addresses).toString());
 	}
 
-	void writeTransactions(Collection<StoredTransaction> txs) {
+	void printTransactions(Collection<StoredTransaction> txs) {
 		for (StoredTransaction tx : txs) {
 			log.info("tx: {}", tx);
 			if (tx.getVins() != null) {

@@ -9,7 +9,7 @@ import org.bitcoinj.core.Sha256Hash;
 import org.bitcoinj.wallet.DeterministicKeyChain;
 import org.bitcoinj.wallet.KeyChain;
 
-public enum UserKeyChain {
+public enum UserHDKeys {
 	INSTANCE;
 	private final static byte[] ENTROPY = Sha256Hash.hash("don't use a string seed like this in real life".getBytes());
 	private final static byte[] ENTROPY2 = Sha256Hash
