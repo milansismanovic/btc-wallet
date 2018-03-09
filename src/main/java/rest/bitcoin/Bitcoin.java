@@ -147,8 +147,9 @@ public class Bitcoin {
 	}
 
 	/**
-	 * Gets all user transactions. FIXME: use BitcoinJ Transaction instead of
-	 * BitcoinClient4J RawTransaction.
+	 * Gets all user transactions. 
+	 * 
+	 * FIXME: add inputs to the result JSON for the client for displaying the input addresses and amounts
 	 * 
 	 * @return
 	 * @throws ParseException
