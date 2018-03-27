@@ -60,7 +60,7 @@ public class MemoryBlockStore extends BlockStore {
 		updateChainHead(block);
 	}
 
-	StoredTransaction doubleTx;
+	StoredTransaction doubleTx; //TODO - Initialise doubleTx
 
 	/**
 	 * Add a transaction to the addressTransaction map. If there is no entry for
@@ -80,6 +80,8 @@ public class MemoryBlockStore extends BlockStore {
 		// it is added twice to the addressTransaction set. Thus this funny code below.
 		// otherwise only
 		// thisaddressTransactions.add(tx); would be needed.
+		
+		
 		final String debugStopAddress = "538185dd71bbbab9e2f8fb9da0c89c77f065393d92482629b4af940cb2bcc09a";
 		if (tx.getTxid().equals(debugStopAddress)) {
 			log.info("debugTx: set():{}", thisaddressTransactions);
