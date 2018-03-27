@@ -71,6 +71,9 @@ public interface BitcoindInterface {
 	//creates a raw transaction and returns its byte representations
 	public String sendrawtransaction(String rawTransaction);
 	
+	// Returns array of unspent transaction outputs
+	public List<ListUnspentTO> listunspent(int minconf, int maxconf, List<String> addresses, boolean includeUnsafe, Map<String,String> queryOptions);
+		
 	//Returns an object about the given transaction hash.
 	public String getrawtransaction(String hash);
 	//Returns an object about the given transaction hash.
