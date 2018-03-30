@@ -41,9 +41,17 @@ import com._37coins.bcJsonRpc.ListUnspentTO;
 
 import store.bitcoin.BlockStore;
 import store.bitcoin.BlockStoreException;
-import store.bitcoin.MemoryBlockStore;
-import store.bitcoin.StoreLoader;
 
+/**
+ * IMPORTANT PLEASE READ TO MAKE UNIT TEST WORK: - install the bitcoin Core Node
+ * and run it with testnet - import the clientPrivateKeys1 into your Bitcoin
+ * Core Node - configure the bitcoin.conf file to have the following entries
+ * testnet=1 server=1 rpcuser=test rpcpassword=test rpcallowip=::/0 txindex=1
+ * rpcserialversion=0
+ * 
+ * @author milan
+ *
+ */
 public class BitcoinTransactionTest {
 	private static Logger log = LoggerFactory.getLogger(BitcoinTransactionTest.class);
 
@@ -54,7 +62,7 @@ public class BitcoinTransactionTest {
 	static BitcoindInterface client;
 	static BlockStore store;
 	static Configuration config;
-	static StoreLoader storeLoader;
+	// static StoreLoader storeLoader;
 	static NetworkParameters params;
 
 	@BeforeClass
@@ -64,11 +72,6 @@ public class BitcoinTransactionTest {
 				config.getString("bitcoin.rpc.rpcuser"), config.getString("bitcoin.rpc.rpcpassword"));
 		client = clientFactory.getClient();
 		params = config.getBoolean("bitcoin.testnet") ? TestNet3Params.get() : MainNetParams.get();
-		// store = new DBBlockStore();
-		store = new MemoryBlockStore();
-		storeLoader = new StoreLoader(store, client);
-		// storeLoader.loadStore(6 * 24 * 2); // 28 days in the past
-		storeLoader.loadStore(288); // 28 days in the past
 	}
 
 	@AfterClass
@@ -80,7 +83,7 @@ public class BitcoinTransactionTest {
 	 * 
 	 * @throws BlockStoreException
 	 */
-	
+
 	@Test
 	public void testSimpleTransaction() throws BlockStoreException {
 		String privKey = clientPrivateKeys1; // get the first key as all money is with it
@@ -91,7 +94,7 @@ public class BitcoinTransactionTest {
 		List<ListUnspentTO> utxos = client.listunspent(0, 9999999, addresses, true, new HashMap<String, String>());
 		log.info(utxos.toString());
 
-		Long satoshiAmount = 12012L;
+		Long satoshiAmount = 42012L;
 		Transaction tx = null;
 		try {
 			tx = createSingleKeyTransaction(privKey, satoshiAmount, address, utxos);
@@ -128,21 +131,11 @@ public class BitcoinTransactionTest {
 	Transaction createSingleKeyTransaction(String privKey, long satoshiAmount, String address,
 			List<ListUnspentTO> sutxos) {
 		Collection<UTXO> utxos = convertUTXOs(sutxos);
+		
 		// String to a private key
-		
-		//DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params, privKey);
-		//ECKey key = dumpedPrivateKey.getKey();
-		
-		
-		ECKey key;
-        if (privKey.length() == 51 || privKey.length() == 52) {
-            DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params, privKey);
-            key = dumpedPrivateKey.getKey();
-        } else {
-            BigInteger privKeyBigInt = Base58.decodeToBigInteger(privKey);
-            key = ECKey.fromPrivate(privKeyBigInt);
-        }
-        
+		DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params, privKey);
+		ECKey key = dumpedPrivateKey.getKey();
+
 		// String to an address
 		Address address2 = Address.fromBase58(params, address);
 
@@ -155,7 +148,7 @@ public class BitcoinTransactionTest {
 		}
 
 		// add outputs
-		Coin feeAmount = Coin.valueOf(4013);
+		Coin feeAmount = Coin.valueOf(8013);
 		Coin sendAmount = Coin.valueOf(satoshiAmount);
 		tx.addOutput(sendAmount, address2);
 		Coin changeAmount = totalValue.minus(sendAmount).minus(feeAmount);
@@ -178,7 +171,7 @@ public class BitcoinTransactionTest {
 		}
 		return tx;
 	}
-	
+
 	Collection<UTXO> convertUTXOs(List<ListUnspentTO> sutxos) {
 		Collection<UTXO> utxos = new HashSet<>();
 		for (ListUnspentTO sutxo : sutxos) {
@@ -188,9 +181,10 @@ public class BitcoinTransactionTest {
 			// kids don't do this at home possible rounding error
 			long satoshisLong = satoshis.longValue();
 			Coin value = Coin.valueOf(satoshisLong);
+			log.info("utxo amount from listunspent = {}, from bitcoinj = {}", sutxo.getAmount(), value.toString());
 			// get matching rawtransaction
 			String rtxString = client.getrawtransaction(sutxo.getTxid());
-			//RawTransaction rtx = client.decoderawtransaction(rtxString);
+			// RawTransaction rtx = client.decoderawtransaction(rtxString);
 			Transaction inputTx;
 			try {
 				inputTx = new Transaction(params, Utils.HEX.decode(rtxString));
@@ -224,183 +218,4 @@ public class BitcoinTransactionTest {
 		}
 		return utxos;
 	}
-	
-//	Transaction createTransaction(String privKey, int amount, String address, SortedSet<StoredVout> sutxos)
-//			throws BlockStoreException {
-//		Collection<UTXO> utxos = convertUTXOs(sutxos);
-//		// String to a private key
-//		DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params, privKey);
-//		ECKey key = dumpedPrivateKey.getKey();
-//
-//		// String to an address
-//		Address address2 = Address.fromBase58(params, address);
-//
-//		Transaction tx = new Transaction(params);
-//
-//		// calculate total utxo amount
-//		Coin totalValue = Coin.ZERO;
-//		for (UTXO utxo : utxos) {
-//			totalValue = totalValue.add(utxo.getValue());
-//		}
-//
-//		// add outputs
-//		Coin feeAmount = Coin.valueOf(4013);
-//		Coin sendAmount = Coin.valueOf(amount);
-//		tx.addOutput(sendAmount, address2);
-//		Coin changeAmount = totalValue.minus(sendAmount).minus(feeAmount);
-//		tx.addOutput(changeAmount, key.toAddress(params));
-//
-//		// sign and add inputs
-//		// utxos is an array of inputs from my wallet
-//		for (UTXO utxo : utxos) {
-//			TransactionOutPoint outPoint = new TransactionOutPoint(params, utxo.getIndex(), utxo.getHash());
-//			tx.addSignedInput(outPoint, utxo.getScript(), key);
-//		}
-//		return tx;
-//	}
-//
-//	Collection<UTXO> convertUTXOs(Collection<StoredVout> sutxos) throws BlockStoreException {
-//		Collection<UTXO> utxos = new HashSet<>();
-//		for (StoredVout sutxo : sutxos) {
-//			Sha256Hash hash = Sha256Hash.wrap(sutxo.getTxID());
-//			int index = sutxo.getIndex();
-//			BigDecimal satoshis = sutxo.getValue().multiply(new BigDecimal("100000000"));
-//			long satoshisLong = satoshis.longValueExact();
-//			Coin value = Coin.valueOf(satoshisLong);
-//			int height = store.get(store.getTx(sutxo.getTxID()).getBlockHash()).getHeight();
-//			boolean coinbase = false;
-//			String rtxString = client.getrawtransaction(sutxo.getTxID());
-//			Transaction inputTx;
-//			// TODO migrate to latest segwit branch or main if already migrated there, so the conversion always works
-//			try {
-//				inputTx = new Transaction(params, Utils.HEX.decode(rtxString));
-//			} catch (Exception e) {
-//				log.error("error reading transaction: {}", rtxString);
-//				continue;
-//			}
-//			RawTransaction rtx = client.decoderawtransaction(rtxString);
-//			Vout rtxVout = rtx.getVout().get(sutxo.getIndex());
-//			log.info(rtxVout.toString());
-//			byte[] scriptBytes = inputTx.getOutputs().get(sutxo.getIndex()).getScriptBytes();
-//			Script script = null;
-//			try {
-//				script = new Script(scriptBytes);
-//			} catch (Exception e) {
-//				log.error("error reading script: {}", Utils.HEX.encode(scriptBytes));
-//				continue;
-//			}
-//			String address = sutxo.getAddresses().get(0);
-//			UTXO utxo = new UTXO(hash, index, value, height, coinbase, script, address);
-//			utxos.add(utxo);
-//		}
-//		return utxos;
-//	}
-
-	// @Test
-	// public void signRawTransaction() {
-	// RawTxInput rawTxInput = new
-	// RawTxInput("6ab96bee2ce532737281eb98e9e3c132b593d936af02f23914ed451d0bd29921",
-	// 0,
-	// null);
-	// List<RawTxInput> rawTxInputs = new LinkedList<>();
-	// rawTxInputs.add(rawTxInput);
-	//
-	// RawTxOutput rawTxOutput = new RawTxOutput();
-	// rawTxOutput.setAddressValuePairs("mmouiZHkpRd2uBUk3UYj2vTJ6NuupY4Agf",
-	// 0.599);
-	// rawTxOutput.setAddressValuePairs("mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH", 0.5);
-	//
-	// String rawTxString = client.createrawtransaction(rawTxInputs, rawTxOutput);
-	//
-	// // sign it using key and address
-	// String privKey = clientPrivateKeys1; // get the first key as all money is
-	// with it
-	// String pubKey = clientPublicKeys1; // get the first key as all money is with
-	// it
-	// String address = clientAddresses1; // get the first address
-	//
-	// BigInteger privKeyI = Base58.decodeToBigInteger(privKey);
-	// ECKey key = ECKey.fromPrivate(privKeyI);
-	// log.info("pkey: ", key.getPrivateKeyAsWiF(TestNet3Params.get()));
-	// log.info("pubKey: {}", key.getPublicKeyAsHex());
-	// // String sha256Hash = "";
-	// // ECDSASignature signature = key.sign(Sha256Hash.wrap(sha256Hash));
-	//
-	// // String pk =
-	// // "5192F341264DA502B07C196F9E12D542A0A717D41D03FBC68B55FD7C350F963D";
-	// //
-	// // byte[] pkBytes = Utils.HEX.base16().upperCase().decode(pk);
-	// // ECKey key = ECKey.fromPrivate(pkBytes);
-	// //// ECKey key = new ECKey(Utils.HEX.decode(privKey),
-	// Utils.HEX.decode(pubKey));
-	//
-	// // org.bitcoinj.wallet.Wallet wallet;
-	// // SendRequest req;
-	// // wallet.signTransaction(req);
-	//
-	// String signedMessage64 = key.signMessage(rawTxString);
-	// byte[] signedMessageBytes = Base64.decode(signedMessage64);
-	// String signedMessageByteString = Utils.HEX.encode(signedMessageBytes);
-	//
-	// log.info("signed tx: {}", signedMessageByteString);
-	// }
-	//
-	// @Test
-	// public void test() throws BlockStoreException {
-	// String privKey = clientPrivateKeys1; // get the first key as all money is
-	// with it
-	// String address = clientAddresses1; // get the first address
-	// Set<String> addresses = new HashSet<>();
-	// addresses.add(address);
-	// SortedSet<StoredVout> utxos = store.getUnspentVouts(addresses);
-	//
-	// DumpedPrivateKey dumpedPrivateKey = DumpedPrivateKey.fromBase58(params,
-	// privKey);
-	// ECKey key = dumpedPrivateKey.getKey();
-	//
-	// // String to an address
-	// Address address2 = Address.fromBase58(params, address);
-	//
-	// Transaction tx = new Transaction(params);
-	//
-	// String inputString =
-	// "[{\"txid\":\"6ab96bee2ce532737281eb98e9e3c132b593d936af02f23914ed451d0bd29921\",\"vout\":0}]";
-	// String outputString = "{\"mmouiZHkpRd2uBUk3UYj2vTJ6NuupY4Agf\":0.599,"
-	// + "\"mofhdVSgsUsVacWsf8QMNhDQqYnVXPtnZH\":0.5}";
-	//
-	// // UTXO utxo = new UTXO(hash, index, value, height, coinbase, script)
-	//
-	// for (StoredVout vout : utxos) {
-	// // UTXO utxo = new UTXO(null); // new UTXO(hash, index, value, height,
-	// coinbase,
-	// // script, address);
-	// log.info("utxo to be used:{}", vout);
-	// String inputRawTxString = client.getrawtransaction(vout.getTxID());
-	// RawTransaction rawTx = client.decoderawtransaction(inputRawTxString);
-	// // log.info("rawtx: {}", rawTxString);
-	// byte[] inputRawTxBytes = Utils.HEX.decode(inputRawTxString);
-	//
-	// Sha256Hash txHash = Sha256Hash.wrap(vout.getTxID());
-	// TransactionOutPoint outPoint = new TransactionOutPoint(params,
-	// vout.getIndex(), txHash);
-	// log.info("outPoint: {}", outPoint);
-	// // Script script = new Script(out.getScriptBytes()); // utxo.getScript()
-	// Transaction bitcoinjTx = new Transaction(params, inputRawTxBytes);
-	// TransactionOutput out = bitcoinjTx.getOutput(vout.getIndex());
-	// // tx.addSignedInput(outPoint, out.getScriptPubKey(), key,
-	// // Transaction.SigHash.ALL, true);
-	// }
-	// int amount = 14013;// satoshiAmount;
-	// // value is a sum of all inputs, fee is 4013
-	// tx.addOutput(Coin.valueOf(amount - 4013), address2);
-	//
-	// tx.getConfidence().setSource(TransactionConfidence.Source.SELF);
-	// tx.setPurpose(Transaction.Purpose.USER_PAYMENT);
-	//
-	// byte[] rawTx = tx.unsafeBitcoinSerialize();
-	//
-	// // log.info("tx to broadcast: {}", tx);
-	// // b_peerGroup.GetPeerGroup().broadcastTransaction(tx);
-	//
-	// }
 }
